@@ -1,0 +1,5 @@
+PROGRAM es4_duplicado
+# Error: 'i' se declara dos veces
+VAR i = 0
+VAR i = 5
+END

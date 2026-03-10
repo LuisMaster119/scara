@@ -1,0 +1,14 @@
+PROGRAM repeticion
+POINT pos1 = 100 0 0
+POINT pos2 = 200 100 0
+SPEED 50
+REPEAT 4
+    MOVE pos1
+    CLOSE
+    MOVE pos2
+    OPEN
+    WAIT 1
+END
+HOME
+PRINT "Repeticion finalizada"
+END

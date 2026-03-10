@@ -1,0 +1,20 @@
+PROGRAM pickandplace
+VAR i = 0
+POINT encima_caja = 150 200 50
+POINT caja = 150 200 0
+POINT encima_mesa = 300 150 50
+POINT mesa = 300 150 0
+SPEED 70
+WHILE i < 3
+    MOVE encima_caja
+    APPROACH caja
+    CLOSE
+    DEPART 50
+    MOVE encima_mesa
+    APPROACH mesa
+    OPEN
+    DEPART 50
+    i = i + 1
+END
+PRINT "Ciclo completado"
+END

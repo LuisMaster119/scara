@@ -1,0 +1,4 @@
+PROGRAM lex3_porcentaje
+# Error: '%' no es un caracter valido en el lenguaje
+SPEED 70%
+END

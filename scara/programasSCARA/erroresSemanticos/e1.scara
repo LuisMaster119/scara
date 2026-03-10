@@ -1,0 +1,5 @@
+PROGRAM error1
+WHILE x < 3
+    HOME
+END
+END

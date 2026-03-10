@@ -1,0 +1,5 @@
+PROGRAM es8_rango
+# Error: el punto esta fuera del alcance del robot (max 350mm)
+POINT lejano = 99999 99999 0
+MOVE lejano
+END

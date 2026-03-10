@@ -1,0 +1,4 @@
+PROGRAM es2_punto_no_declarado
+# Error: se usa 'destino' sin declararlo con POINT
+MOVE destino
+END

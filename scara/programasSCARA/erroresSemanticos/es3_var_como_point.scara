@@ -1,0 +1,5 @@
+PROGRAM es3_var_como_point
+# Error: 'contador' es VAR pero se usa como POINT en MOVE
+VAR contador = 0
+MOVE contador
+END

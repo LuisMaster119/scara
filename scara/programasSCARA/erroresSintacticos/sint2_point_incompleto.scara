@@ -1,0 +1,4 @@
+PROGRAM sint2_point_incompleto
+# Error: POINT necesita 3 coordenadas (X Y Z)
+POINT p1 = 100 200
+END

@@ -1,0 +1,5 @@
+PROGRAM sint4_var_sin_valor
+# Error: VAR necesita un valor inicial
+VAR contador =
+HOME
+END

@@ -1,0 +1,4 @@
+PROGRAM lex2_caracter_invalido
+# Error: '$' no es un caracter valido en el lenguaje
+VAR $precio = 100
+END

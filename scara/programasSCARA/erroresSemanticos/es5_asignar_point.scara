@@ -1,0 +1,5 @@
+PROGRAM es5_asignar_point
+# Error: no se puede asignar valor a un POINT
+POINT caja = 150 200 0
+caja = 100
+END

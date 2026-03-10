@@ -1,0 +1,4 @@
+PROGRAM es9_wait
+# Error: WAIT debe ser mayor a 0
+WAIT -3
+END

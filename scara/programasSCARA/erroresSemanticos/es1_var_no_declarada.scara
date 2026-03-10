@@ -1,0 +1,6 @@
+PROGRAM es1_var_no_declarada
+# Error: se usa 'contador' sin declararlo con VAR
+WHILE contador < 3
+    HOME
+END
+END

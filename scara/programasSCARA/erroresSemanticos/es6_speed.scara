@@ -1,0 +1,4 @@
+PROGRAM es6_speed
+# Error: SPEED debe ser entre 0 y 100
+SPEED 150
+END

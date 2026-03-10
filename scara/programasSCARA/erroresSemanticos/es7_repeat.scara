@@ -1,0 +1,7 @@
+PROGRAM es7_repeat
+# Error: REPEAT debe ser mayor a 0
+POINT p1 = 100 0 0
+REPEAT 0
+    MOVE p1
+END
+END

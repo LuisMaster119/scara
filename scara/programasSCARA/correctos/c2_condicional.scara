@@ -1,0 +1,17 @@
+PROGRAM condicional
+VAR x = 5
+POINT destino_a = 100 100 0
+POINT destino_b = 200 200 0
+IF x < 10
+    MOVE destino_a
+    CLOSE
+    WAIT 2
+    OPEN
+ELSE
+    MOVE destino_b
+    CLOSE
+    WAIT 2
+    OPEN
+END
+PRINT "Movimiento completado"
+END

@@ -1,0 +1,4 @@
+PROGRAM lex1_caracter_desconocido
+# Error: '@' no es un caracter valido en el lenguaje
+SPEED @70
+END

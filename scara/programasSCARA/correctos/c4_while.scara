@@ -1,0 +1,14 @@
+PROGRAM contador
+VAR n = 0
+POINT base = 100 50 0
+POINT alto = 100 50 100
+SPEED 80
+WHILE n < 5
+    MOVE base
+    CLOSE
+    MOVE alto
+    OPEN
+    n = n + 1
+END
+PRINT "Contador terminado"
+END

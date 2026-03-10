@@ -1,0 +1,7 @@
+PROGRAM sint1_while_sin_end
+# Error: el WHILE no tiene END
+VAR i = 0
+WHILE i < 3
+    HOME
+    i = i + 1
+END

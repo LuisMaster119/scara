@@ -353,7 +353,14 @@ void parsear_flujo(Parser* p) {
         int izq, der; TipoToken op;
         char nom_izq[64] = "", nom_der[64] = "";
         parsear_condicion(p, &izq, &der, &op, nom_izq, nom_der);
-        emitir(OP_WHILE, izq, (int)op, der, nom_izq);
+        emitir(OP_WHILE,
+              (izq == -1 ? 0 : izq),
+              (int)op,
+              (der == -1 ? 0 : der),
+              (izq == -1 ? nom_izq : NULL));
+        if (izq == -1) bytecode[bytecode_len - 1].flags |= INS_F_ARG1_VAR;
+        if (der == -1) bytecode[bytecode_len - 1].flags |= INS_F_ARG3_VAR;
+        if (der == -1) strcpy(bytecode[bytecode_len - 1].sval2, nom_der);
         parsear_bloque(p);
         parser_consumir(p, TOK_END);
         emitir(OP_END_WHILE, 0, 0, 0, NULL);
@@ -377,7 +384,14 @@ void parsear_flujo(Parser* p) {
         int izq, der; TipoToken op;
         char nom_izq[64] = "", nom_der[64] = "";
         parsear_condicion(p, &izq, &der, &op, nom_izq, nom_der);
-        emitir(OP_IF, izq, (int)op, der, nom_izq);
+        emitir(OP_IF,
+              (izq == -1 ? 0 : izq),
+              (int)op,
+              (der == -1 ? 0 : der),
+              (izq == -1 ? nom_izq : NULL));
+        if (izq == -1) bytecode[bytecode_len - 1].flags |= INS_F_ARG1_VAR;
+        if (der == -1) bytecode[bytecode_len - 1].flags |= INS_F_ARG3_VAR;
+        if (der == -1) strcpy(bytecode[bytecode_len - 1].sval2, nom_der);
         parsear_bloque(p);
         if (p->actual.tipo == TOK_ELSE) {
             parser_avanzar(p);

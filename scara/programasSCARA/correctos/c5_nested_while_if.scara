@@ -1,0 +1,12 @@
+PROGRAM nested_while_if
+VAR i = 0
+WHILE i < 3
+    IF i == 1
+        PRINT "uno"
+    ELSE
+        PRINT "otro"
+    END
+    i = i + 1
+END
+PRINT "fin"
+END

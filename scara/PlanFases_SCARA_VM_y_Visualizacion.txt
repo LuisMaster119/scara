@@ -185,6 +185,33 @@ Cambios propuestos:
   IF <-> ELSE/END_IF
 - Soportar evaluacion de condiciones runtime.
 
+Avance implementado en esta iteracion:
+- VM actualizada con pre-scan de bytecode para enlazar bloques:
+  - jump WHILE -> END_WHILE y retorno END_WHILE -> WHILE
+  - jump IF falso -> ELSE/END_IF
+  - jump ELSE -> END_IF
+  - jump REPEAT -> END_REPEAT y retorno END_REPEAT -> cuerpo
+- Evaluacion de condiciones en runtime para IF/WHILE con operadores
+  <, > y ==, soportando operandos literal/variable.
+- Parser actualizado para codificar condiciones con flags y nombres
+  de variables en bytecode (arg1/arg3 literal o variable).
+
+Validacion ejecutada:
+- c2_condicional.scara: rama correcta, ELSE omitido, EXIT=0
+- c3_repeat.scara: repeticion exacta del bloque, EXIT=0
+- c4_while.scara: ciclo con salida correcta, EXIT=0
+- c5_nested_while_if.scara: bloque anidado IF dentro de WHILE,
+  secuencia esperada de PRINT, EXIT=0
+- c6_nested_repeat_if.scara: bloque anidado IF dentro de REPEAT,
+  secuencia esperada de PRINT, EXIT=0
+- No regresion en errores:
+  - lex1_caracter_desconocido.scara -> EXIT=1
+  - sint1_while_sin_end.scara -> EXIT=1
+  - es1_var_no_declarada.scara -> EXIT=1
+
+Estado de Fase 2:
+- CIERRE FORMAL COMPLETADO.
+
 Validacion:
 - Probar c2_condicional.scara, c3_repeat.scara, c4_while.scara.
 
@@ -298,7 +325,7 @@ Control:
 7. CHECKLIST DE AVANCE
 ================================================================
 [x] Fase 1 VM minima cerrada y validada
-[ ] Fase 2 flujo completo (siguiente fase activa)
+[x] Fase 2 flujo completo cerrada y validada
 [ ] Fase 3 movimientos con estado
 [ ] Fase 4 cinematica inversa real
 [ ] Fase 5 visualizacion SDL2 + ASM
@@ -308,21 +335,21 @@ Control:
 ================================================================
 8. SIGUIENTE PASO RECOMENDADO INMEDIATO
 ================================================================
-Iniciar Fase 2: Control de flujo completo en VM.
+Iniciar Fase 3: Movimiento con stub de cinematica.
 
 Objetivo inmediato:
-- Implementar saltos de OP_WHILE / OP_END_WHILE
-- Implementar saltos de OP_IF / OP_ELSE / OP_END_IF
-- Implementar saltos de OP_REPEAT / OP_END_REPEAT
+- Implementar OP_MOVE, OP_MOVEJ, OP_APPROACH y OP_DEPART con
+  actualizacion de estado interno de posicion (x, y, z).
+- Mantener trazas claras de posicion y estado de pinza/velocidad.
+- Conservar OP_HOME como reinicio de posicion de referencia.
 
-Validacion minima de entrada a Fase 2:
-- c2_condicional.scara
-- c3_repeat.scara
-- c4_while.scara
+Validacion minima de entrada a Fase 3:
+- c1_pickandplace.scara
+- c5_nested_while_if.scara (como control de no regresion de flujo)
 
-Criterio de cierre de Fase 2:
-- Los saltos respetan bloques anidados
-- No hay bucles infinitos inesperados
+Criterio de cierre de Fase 3:
+- El estado de posicion evoluciona correctamente por instruccion
+- No hay regresion en control de flujo de Fase 2
 - EXIT=0 en correctos y EXIT=1 en errores esperados
 
 ================================================================

@@ -1,0 +1,12 @@
+PROGRAM nested_repeat_if
+VAR k = 0
+REPEAT 2
+    IF k < 1
+        PRINT "primera"
+    ELSE
+        PRINT "segunda"
+    END
+    k = k + 1
+END
+PRINT "fin"
+END

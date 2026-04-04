@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
              ins->sval3);
     }
 
-        printf("\n=== EJECUCION VM (FASE 1) ===\n");
+        printf("\n=== EJECUCION VM (FASE 2) ===\n");
         vm_ejecutar(bytecode, bytecode_len, 1);
 
     free(programa);

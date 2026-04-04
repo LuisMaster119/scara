@@ -4,6 +4,14 @@
   Entorno, estructura, lenguaje, estado actual y proximos pasos
 ================================================================
 
+ACTUALIZACION DE ESTADO (2026-04-03):
+- Fase 1 cerrada y validada.
+- Fase 2 cerrada y validada.
+- Fase 3 cerrada y validada.
+- Fase 4 cerrada y validada (IK C/ASM consistente).
+- Fase 5 cerrada formalmente y validada (visualizacion SDL2 + controles).
+- Siguiente hito: pruebas finales integrales del proyecto.
+
 
 ================================================================
 1. ENTORNO DE DESARROLLO

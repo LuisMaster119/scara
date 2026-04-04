@@ -7,6 +7,7 @@
 
 #define VM_MAX_VARS 128
 #define VM_MAX_CODE 256
+#define VM_MAX_TRAZA 8192
 #define VM_APPROACH_CLEARANCE 50
 
 typedef struct {
@@ -21,13 +22,37 @@ static int pinza_abierta = 1;
 static int pos_x = 0;
 static int pos_y = 0;
 static int pos_z = 0;
+static VmEstado vm_traza[VM_MAX_TRAZA];
+static int vm_traza_len = 0;
 
 typedef struct {
     int if_idx;
     int else_idx;
 } IfFrame;
 
+static void vm_registrar_estado(void) {
+    if (vm_traza_len >= VM_MAX_TRAZA) {
+        return;
+    }
+    vm_traza[vm_traza_len].x = pos_x;
+    vm_traza[vm_traza_len].y = pos_y;
+    vm_traza[vm_traza_len].z = pos_z;
+    vm_traza[vm_traza_len].pinza_abierta = pinza_abierta;
+    vm_traza[vm_traza_len].velocidad = velocidad_actual;
+    vm_traza_len++;
+}
+
+static void vm_registrar_espera(int segundos) {
+    int muestras_por_seg = 5;
+    int total = segundos * muestras_por_seg;
+    if (total < 1) total = 1;
+    for (int i = 0; i < total; i++) {
+        vm_registrar_estado();
+    }
+}
+
 static void vm_imprimir_posicion(const char* etiqueta) {
+    vm_registrar_estado();
     printf("[VM] %s -> posicion (%d,%d,%d)\n", etiqueta, pos_x, pos_y, pos_z);
 }
 
@@ -49,6 +74,7 @@ static void vm_trazar_hacia(const char* etiqueta, int x_obj, int y_obj, int z_ob
         pos_x = x0 + ((x_obj - x0) * i) / pasos;
         pos_y = y0 + ((y_obj - y0) * i) / pasos;
         pos_z = z0 + ((z_obj - z0) * i) / pasos;
+        vm_registrar_estado();
         printf("[VM] %s paso %d/%d -> posicion (%d,%d,%d)\n",
                etiqueta, i, pasos, pos_x, pos_y, pos_z);
     }
@@ -134,6 +160,15 @@ static void vm_reset_estado(void) {
     pos_x = 0;
     pos_y = 0;
     pos_z = 0;
+    vm_traza_len = 0;
+    vm_registrar_estado();
+}
+
+const VmEstado* vm_obtener_traza_estados(int* out_len) {
+    if (out_len) {
+        *out_len = vm_traza_len;
+    }
+    return vm_traza;
 }
 
 static int vm_buscar_var(const char* nombre) {
@@ -411,11 +446,13 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
             case OP_OPEN:
                 pinza_abierta = 1;
+                vm_registrar_estado();
                 printf("[VM] Pinza: OPEN\n");
                 break;
 
             case OP_CLOSE:
                 pinza_abierta = 0;
+                vm_registrar_estado();
                 printf("[VM] Pinza: CLOSE\n");
                 break;
 
@@ -485,6 +522,7 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                     return 1;
                 }
                 velocidad_actual = ins->arg1;
+                vm_registrar_estado();
                 printf("[VM] SPEED = %d%%\n", velocidad_actual);
                 break;
 
@@ -493,6 +531,7 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                     fprintf(stderr, "VM ERROR: WAIT invalido: %d\n", ins->arg1);
                     return 1;
                 }
+                vm_registrar_espera(ins->arg1);
                 printf("[VM] WAIT %d s\n", ins->arg1);
                 Sleep((DWORD)ins->arg1 * 1000);
                 break;

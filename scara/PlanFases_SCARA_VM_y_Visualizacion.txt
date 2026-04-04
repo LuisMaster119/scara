@@ -402,9 +402,82 @@ Cambios propuestos:
 - En ASM: proyeccion isometrica y dibujo de segmentos.
 - Integrar estado pinza (OPEN/CLOSE) y animacion basica.
 
+Avance implementado en esta iteracion (bloque inicial de Fase 5):
+- VM ahora registra traza de estados runtime (x,y,z,pinza,velocidad)
+  para visualizacion posterior.
+- main.c integra visualizador SDL2 al finalizar vm_ejecutar(...).
+- Render 2.5D isometrico implementado con:
+  - grilla base XY,
+  - trayectoria historica del efector final,
+  - segmentos del brazo (base->codo->efector) usando IK runtime,
+  - indicador de estado de pinza (abierta/cerrada por color).
+- Loop de eventos SDL2 activo y cierre automatico al finalizar la
+  animacion para permitir validacion desde terminal sin bloqueo.
+
 Validacion:
 - Ventana abre/cierra bien.
 - El brazo se dibuja y se mueve con el programa.
+
+Validacion ejecutada (avance inicial de Fase 5):
+- c1_pickandplace.scara ejecuta VM completa y entra a
+  "VISUALIZACION SDL2 (FASE 5)" sin errores de compilacion ni runtime.
+- c2_condicional.scara ejecuta IF/ELSE completo y entra a visualizacion
+  con EXIT=0.
+
+Avance implementado en esta iteracion (bloque 2 de Fase 5):
+- Controles interactivos de camara agregados en visualizacion SDL2:
+  - Flechas: paneo
+  - +/-: zoom
+  - R: reset de camara
+  - Espacio: pausa/reanudacion
+- HUD visual agregado sin dependencias extra (sin SDL_ttf):
+  - barra de progreso de animacion,
+  - barra de velocidad actual,
+  - indicador de pinza abierta/cerrada,
+  - indicador visual de estado pausa/play.
+- Temporizacion de reproduccion ajustada al estado runtime:
+  - delay dinamico por velocidad (SPEED),
+  - pausas visuales para WAIT mediante muestreo de estados estaticos.
+- VM mejorada para trazar eventos no-posicionales en timeline visual:
+  - registro explicito en cambios de SPEED y OPEN/CLOSE,
+  - snapshots adicionales durante WAIT.
+
+Validacion ejecutada (bloque 2 de Fase 5):
+- Build GCC + SDL2 compila sin errores.
+- c2_condicional.scara: visualizacion interactiva activa, EXIT=0.
+- c1_pickandplace.scara: trayectoria extensa estable en visualizacion,
+  EXIT=0.
+
+Avance implementado en esta iteracion (bloque 3 de Fase 5):
+- Opcion CLI agregada para demo/manual testing:
+  --vis-keep-open
+  (desactiva autocierre al finalizar animacion visual).
+- Parser de argumentos actualizado para aceptar:
+  scara.exe [--vis-keep-open] <archivo.scara>
+  manteniendo compatibilidad con --ik-selftest.
+- Validacion extra de robustez visual en control de flujo:
+  - c3_repeat.scara -> EXIT=0
+  - c4_while.scara -> EXIT=0
+
+Validacion final de cierre (Fase 5):
+- c1_pickandplace.scara -> EXIT=0
+- c2_condicional.scara -> EXIT=0
+- c3_repeat.scara -> EXIT=0
+- c4_while.scara -> EXIT=0
+- c5_nested_while_if.scara -> EXIT=0
+- c6_nested_repeat_if.scara -> EXIT=0
+- c7_movej_stub.scara -> EXIT=0
+- c8_ik_bordes.scara -> EXIT=0
+
+Estado de Fase 5:
+- CIERRE FORMAL COMPLETADO.
+
+Revalidacion de cierre (post-fix visual, 2026-04-03):
+- Ajuste aplicado en visualizador para auto-cierre correcto cuando
+  la traza tiene estado unico (casos sin movimiento cartesiano visible).
+- Bateria c1..c8 re-ejecutada en limpio sobre programasCOMPI/scara.exe:
+  todas las ejecuciones con EXIT=0.
+- Se confirma nuevamente el cierre formal de Fase 5.
 
 Salida esperada:
 - Ejecucion visual estable con trayectoria visible.
@@ -457,29 +530,30 @@ Control:
 [x] Fase 2 flujo completo cerrada y validada
 [x] Fase 3 movimientos con estado cerrada y validada
 [x] Fase 4 cinematica inversa real cerrada y validada
-[ ] Fase 5 visualizacion SDL2 + ASM
+[x] Fase 5 visualizacion SDL2 + ASM cerrada y validada
 [ ] Pruebas finales integrales
 
 
 ================================================================
 8. SIGUIENTE PASO RECOMENDADO INMEDIATO
 ================================================================
-Iniciar Fase 5: visualizacion SDL2 + ASM (isometrica 2.5D).
+Iniciar pruebas finales integrales del proyecto.
 
 Objetivo inmediato:
-- Crear ventana SDL2, renderer y loop de eventos estable.
-- Consumir posicion runtime del robot para dibujar segmentos en 2.5D.
-- Integrar estado de pinza (OPEN/CLOSE) en la visualizacion.
+- Ejecutar bateria integral de correctos + errores (lexico/sintactico/
+  semantico/runtime) con verificacion de codigos de salida esperados.
+- Revalidar --ik-selftest para garantizar que C/ASM permanece consistente.
+- Consolidar reporte final de estado del compilador + VM + IK + visualizacion.
 
-Validacion minima de entrada a Fase 5:
-- Ventana abre/cierra sin crash ni fugas evidentes.
-- c1_pickandplace.scara se visualiza con trayectoria coherente.
-- c2_condicional.scara no rompe el loop de render.
+Validacion minima para pruebas finales integrales:
+- Casos correctos base (c1..c8) con EXIT=0.
+- Casos de error lexico/sintactico/semantico/runtime con EXIT=1.
+- --ik-selftest en verde: fail=0.
 
-Criterio de cierre de Fase 5:
-- Render estable durante toda la ejecucion del bytecode.
-- Trayectoria visible y consistente con el estado de VM.
-- Cierre limpio de ventana y retorno correcto del ejecutable.
+Criterio de cierre del proyecto:
+- Pipeline completo estable: lexer + parser + VM + IK C/ASM + visualizacion.
+- Resultados coherentes y reproducibles en bateria completa.
+- Documentacion final actualizada con comandos y criterios de validacion.
 
 ================================================================
 FIN

@@ -1,0 +1,330 @@
+================================================================
+PLAN POR FASES - SCARA (OPCION A)
+Documentacion operativa para continuar el proyecto
+================================================================
+Fecha: 2026-04-03
+Proyecto: Compilador SCARA
+Ruta base: scara/
+
+
+================================================================
+0. OBJETIVO DE ESTE DOCUMENTO
+================================================================
+Este archivo define una guia paso a paso para continuar el proyecto
+por fases, minimizando riesgo y permitiendo validar avances en cada
+etapa.
+
+Incluye:
+- Que cambios se realizaron y/o se proponen por fase
+- Como compilar
+- Requisitos y extensiones/herramientas necesarias
+- Que salida se espera en cada validacion
+
+
+================================================================
+1. ESTADO ACTUAL Y CAMBIOS REALIZADOS HASTA AHORA
+================================================================
+Estado actual confirmado:
+- Frontend del compilador completo en C:
+  - errores.c / errores.h
+  - lexer.c / lexer.h
+  - parser.c / parser.h
+  - simbolos.c / simbolos.h
+  - main.c
+- Se generan tabla de simbolos y bytecode.
+- Hay programas de prueba .scara (correctos y con errores).
+
+Cambios realizados en esta iteracion:
+- Se ajusto el contrato de bytecode para soportar mejor OP_ASSIGN
+  (operandos literal/variable diferenciados por flags y nombres).
+- Se agrego modulo VM de Fase 1 en C:
+  - vm.c
+  - vm.h
+- Se integro ejecucion VM en main.c al finalizar la compilacion.
+- Se mejoro la impresion de bytecode para depurar:
+  - nombre de opcode
+  - flags
+  - campos SVAL/SVAL2/SVAL3
+- Se agrego funcion de apoyo opcode_a_texto(...) en parser.c/parser.h.
+- Se corrigio lectura de archivos fuente en Windows para evitar
+  errores lexicos fantasma al final del programa:
+  - En main.c se cambio fopen(..., "r") por fopen(..., "rb")
+  - El terminador de cadena ahora usa bytes realmente leidos
+    (contenido[leidos] = '\0') y no el tamano de ftell en modo texto.
+
+Estado actual confirmado (cierre de Fase 1):
+- Compilacion OK con GCC + SDL2.
+- Ejecucion de VM Fase 1 integrada y estable para opcodes base.
+- Casos correctos c1, c2, c3, c4 ejecutan con EXIT=0.
+- Casos de error esperados (lexico/sintactico/semantico) reportan
+  error correcto y EXIT=1.
+- Fase 1 queda apta para avanzar a Fase 2.
+
+
+================================================================
+2. REQUISITOS TECNICOS
+================================================================
+Obligatorios:
+1) MSYS2 instalado
+2) GCC (mingw-w64-x86_64-gcc)
+3) NASM (mingw-w64-x86_64-nasm)
+4) SDL2 (mingw-w64-x86_64-SDL2)
+5) PATH con:
+   C:\msys64\mingw64\bin
+
+Verificacion rapida en terminal:
+- gcc --version
+- nasm --version
+
+Nota:
+- Si gcc no aparece en PowerShell, abrir terminal MSYS2 MinGW x64 o
+  corregir PATH y reiniciar terminal.
+
+Extensiones de VS Code (opcionales pero recomendadas):
+- C/C++ (ms-vscode.cpptools)
+- Error Lens (usernamehw.errorlens)
+- Code Runner (formulahendry.code-runner)
+
+
+================================================================
+3. COMANDOS BASE DE COMPILACION Y EJECUCION
+================================================================
+3.1 Compilar Fase 1 (frontend + VM)
+Desde: scara/programasCOMPI/
+
+  gcc main.c lexer.c parser.c simbolos.c errores.c vm.c -o scara.exe \
+      -lmingw32 -lSDL2main -lSDL2
+
+Si PowerShell no reconoce gcc desde PATH, usar ruta absoluta:
+
+  & C:/msys64/mingw64/bin/gcc.exe main.c lexer.c parser.c simbolos.c \
+    errores.c vm.c -o scara.exe -lmingw32 -lSDL2main -lSDL2
+
+3.2 Ejecutar sobre un caso correcto
+
+  .\scara.exe ..\programasSCARA\correctos\c1_pickandplace.scara
+
+Salida esperada:
+- Encabezado de compilacion
+- Tabla de simbolos
+- Bytecode generado
+- Inicio de ejecucion VM (FASE 1)
+- Trazas [VM] por instruccion
+- Fin con [VM] HALT (si el programa llega a HALT)
+
+3.3 Ejecutar sobre un caso con error
+
+  .\scara.exe ..\programasSCARA\erroresSemanticos\es1_var_no_declarada.scara
+
+Salida esperada:
+- ERROR SEMANTICO
+- Numero de linea
+- Linea de codigo
+- Subrayado del token
+
+
+================================================================
+4. OPCION A POR FASES (RECOMENDADA)
+================================================================
+Principio:
+Primero se valida ejecucion (VM), luego flujo, luego movimiento,
+luego cinematica, luego visualizacion.
+
+
+----------------------------------------------------------------
+FASE 1 - VM minima (sin cinematica ni render)
+----------------------------------------------------------------
+Objetivo:
+Tener una VM ejecutando opcodes simples para validar runtime.
+
+Cambios implementados:
+- Se creo modulo VM en C para validacion rapida de runtime:
+  - vm.c
+  - vm.h
+- Se integro vm_ejecutar(...) desde main.c.
+- Se implemento soporte inicial para:
+  OP_HALT, OP_PRINT, OP_OPEN, OP_CLOSE, OP_HOME,
+  OP_SPEED, OP_WAIT, OP_VAR, OP_ASSIGN.
+- Se agrego estado runtime minimo:
+  - tabla de variables de VM
+  - velocidad actual
+  - estado de pinza
+  - posicion actual (x,y,z)
+- Se fortalecio OP_ASSIGN para distinguir operandos variable/literal
+  con flags y campos de nombre auxiliares.
+
+Validacion:
+- Correr programas simples.
+- Ver trazas de ejecucion opcode por opcode.
+
+Estado de validacion actual:
+- Compilacion confirmada y ejecutable generado correctamente.
+- Bug de lectura de archivo en Windows identificado y corregido.
+- Pruebas funcionales cerradas con resultados esperados:
+  - Correctos: c1_pickandplace, c2_condicional, c3_repeat, c4_while -> EXIT=0
+  - Error lexico: lex1_caracter_desconocido, lex2_signo_dolar -> EXIT=1
+  - Error sintactico: sint1_while_sin_end -> EXIT=1
+  - Error semantico: es1_var_no_declarada -> EXIT=1
+
+Salida esperada:
+- Mensajes de ejecucion de VM sin crash.
+- Fin limpio al encontrar OP_HALT.
+
+
+----------------------------------------------------------------
+FASE 2 - Control de flujo completo
+----------------------------------------------------------------
+Objetivo:
+Ejecutar WHILE/IF/ELSE/REPEAT de forma correcta.
+
+Cambios propuestos:
+- Implementar tabla de saltos (pre-scan del bytecode).
+- Resolver pares de bloques:
+  WHILE <-> END_WHILE
+  REPEAT <-> END_REPEAT
+  IF <-> ELSE/END_IF
+- Soportar evaluacion de condiciones runtime.
+
+Validacion:
+- Probar c2_condicional.scara, c3_repeat.scara, c4_while.scara.
+
+Salida esperada:
+- Flujo correcto, sin bucles infinitos no deseados.
+- Saltos coherentes con estructura del programa.
+
+
+----------------------------------------------------------------
+FASE 3 - Movimiento con stub de cinematica
+----------------------------------------------------------------
+Objetivo:
+Conectar MOVE/MOVEJ/APPROACH/DEPART con posicion actual del robot,
+aun sin matematica completa de q1/q2.
+
+Cambios propuestos:
+- Manejadores VM para opcodes de movimiento.
+- Estado interno de posicion actual (x,y,z).
+- Stub temporal de conversion a angulos (placeholder).
+
+Validacion:
+- Probar c1_pickandplace.scara.
+- Confirmar actualizacion de posicion paso a paso.
+
+Salida esperada:
+- Registro en consola de trayectoria.
+- Sin errores de memoria ni desbordes.
+
+
+----------------------------------------------------------------
+FASE 4 - Cinematica inversa ASM real
+----------------------------------------------------------------
+Objetivo:
+Calcular q1 y q2 desde X,Y de forma robusta.
+
+Cambios propuestos:
+- Crear cinematica.asm.
+- Tabla de seno/coseno precomputada entera (escala, por ejemplo x1000).
+- Busqueda de angulos y calculo de q1/q2.
+- Manejo de casos fuera de dominio.
+
+Validacion:
+- Casos de puntos en alcance y borde de alcance.
+- Comparar resultados contra calculo esperado aproximado.
+
+Salida esperada:
+- Angulos coherentes y estables para puntos validos.
+- Rechazo controlado para casos invalidos.
+
+
+----------------------------------------------------------------
+FASE 5 - Visualizacion SDL2 + ASM (isometrica 2.5D)
+----------------------------------------------------------------
+Objetivo:
+Mostrar ejecucion del brazo en ventana SDL2.
+
+Cambios propuestos:
+- En C: ventana, renderer, loop de eventos.
+- En ASM: proyeccion isometrica y dibujo de segmentos.
+- Integrar estado pinza (OPEN/CLOSE) y animacion basica.
+
+Validacion:
+- Ventana abre/cierra bien.
+- El brazo se dibuja y se mueve con el programa.
+
+Salida esperada:
+- Ejecucion visual estable con trayectoria visible.
+- Sin cierres inesperados.
+
+
+================================================================
+5. ESTRATEGIA DE PRUEBAS POR FASE
+================================================================
+Regla:
+No avanzar a la siguiente fase si la actual no pasa pruebas base.
+
+Set minimo por fase:
+- Fase 1: programa corto con PRINT, VAR, ASSIGN, HALT.
+- Fase 2: c2, c3, c4.
+- Fase 3: c1.
+- Fase 4: pruebas puntuales de alcance y precision.
+- Fase 5: c1 + c2 con salida visual.
+
+Recomendacion:
+Crear una carpeta de logs de prueba:
+- scara/programasCOMPI/logs/
+Y guardar resultados por fecha.
+
+
+================================================================
+6. RIESGOS Y CONTROLES
+================================================================
+Riesgo 1: Saltos mal resueltos en bloques anidados
+Control:
+- Pre-scan con pila para emparejar inicios/fines.
+
+Riesgo 2: Incompatibilidad de toolchain en Windows
+Control:
+- Verificar gcc/nasm en PATH antes de compilar.
+
+Riesgo 3: Complejidad trigonometrica en ASM
+Control:
+- Empezar con tabla precomputada y precision fija.
+
+Riesgo 4: Integracion C <-> ASM
+Control:
+- Definir ABI y firmas de funciones desde el inicio.
+
+
+================================================================
+7. CHECKLIST DE AVANCE
+================================================================
+[x] Fase 1 VM minima cerrada y validada
+[ ] Fase 2 flujo completo (siguiente fase activa)
+[ ] Fase 3 movimientos con estado
+[ ] Fase 4 cinematica inversa real
+[ ] Fase 5 visualizacion SDL2 + ASM
+[ ] Pruebas finales integrales
+
+
+================================================================
+8. SIGUIENTE PASO RECOMENDADO INMEDIATO
+================================================================
+Iniciar Fase 2: Control de flujo completo en VM.
+
+Objetivo inmediato:
+- Implementar saltos de OP_WHILE / OP_END_WHILE
+- Implementar saltos de OP_IF / OP_ELSE / OP_END_IF
+- Implementar saltos de OP_REPEAT / OP_END_REPEAT
+
+Validacion minima de entrada a Fase 2:
+- c2_condicional.scara
+- c3_repeat.scara
+- c4_while.scara
+
+Criterio de cierre de Fase 2:
+- Los saltos respetan bloques anidados
+- No hay bucles infinitos inesperados
+- EXIT=0 en correctos y EXIT=1 en errores esperados
+
+================================================================
+FIN
+================================================================

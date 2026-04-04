@@ -1,0 +1,877 @@
+================================================================
+  COMPILADOR SCARA — DOCUMENTO DE CONTINUIDAD DEL PROYECTO
+================================================================
+  Entorno, estructura, lenguaje, estado actual y proximos pasos
+================================================================
+
+
+================================================================
+1. ENTORNO DE DESARROLLO
+================================================================
+
+Sistema operativo: Windows 10
+Editor: Visual Studio Code
+
+
+----------------------------------------------------------------
+1.1  POR QUE SE USO MSYS2
+----------------------------------------------------------------
+
+MSYS2 es un entorno que instala un subsistema tipo Unix dentro
+de Windows. Trae su propio gestor de paquetes llamado pacman
+(el mismo que usa Arch Linux) con el que se pueden instalar
+compiladores, ensambladores y bibliotecas con un solo comando,
+igual que en Linux.
+
+Sin MSYS2 habria que descargar cada herramienta por separado,
+configurar variables de entorno manualmente y resolver
+conflictos de versiones a mano. Con MSYS2 todo queda en una
+carpeta unificada (C:\msys64\) y los binarios se agregan al
+PATH del sistema desde el instalador.
+
+
+----------------------------------------------------------------
+1.2  INSTALACION Y CONFIGURACION DE MSYS2
+----------------------------------------------------------------
+
+PASO 1 — Descargar e instalar MSYS2
+  Descargar el instalador desde: https://www.msys2.org/
+  Ejecutar el instalador y dejar la ruta por defecto:
+  C:\msys64\
+
+PASO 2 — Actualizar la base de datos de paquetes
+  Abrir la terminal "MSYS2 MSYS" (no MinGW, la base) y ejecutar:
+
+    pacman -Syu
+
+  Si la terminal se cierra sola durante la actualizacion,
+  volver a abrirla y ejecutar de nuevo:
+
+    pacman -Su
+
+PASO 3 — Instalar GCC (compilador de C)
+  Abrir la terminal "MSYS2 MinGW x64" y ejecutar:
+
+    pacman -S mingw-w64-x86_64-gcc
+
+  Esto instala GCC en: C:\msys64\mingw64\bin\gcc.exe
+
+PASO 4 — Instalar NASM (ensamblador)
+  En la misma terminal MinGW x64:
+
+    pacman -S mingw-w64-x86_64-nasm
+
+  Esto instala NASM en: C:\msys64\mingw64\bin\nasm.exe
+
+PASO 5 — Instalar SDL2 (biblioteca grafica)
+  En la misma terminal MinGW x64:
+
+    pacman -S mingw-w64-x86_64-SDL2
+
+  Esto instala SDL2 en: C:\msys64\mingw64\lib\ y
+  la DLL en: C:\msys64\mingw64\bin\SDL2.dll
+
+PASO 6 — Agregar MSYS2 al PATH de Windows
+  Abrir: Panel de control > Sistema > Variables de entorno
+  En "Variables del sistema" seleccionar PATH y agregar:
+
+    C:\msys64\mingw64\bin
+
+  Esto permite usar gcc, nasm y otros comandos desde cualquier
+  terminal de Windows (CMD, PowerShell, terminal de VS Code)
+  sin necesidad de escribir la ruta completa cada vez.
+
+PASO 7 — Verificar que todo funciona
+  Abrir una nueva terminal de PowerShell o CMD y ejecutar:
+
+    gcc --version
+    nasm --version
+
+  Ambos deben mostrar su version sin errores. Si algun comando
+  no se reconoce, verificar que el PATH se guardo correctamente
+  y que se abrio una terminal nueva (las terminales abiertas
+  antes del cambio de PATH no lo detectan).
+
+NOTA SOBRE SDL2.DLL:
+  Cuando se ejecute el compilador con visualizacion SDL2,
+  el archivo SDL2.dll debe estar en la misma carpeta que
+  el ejecutable scara.exe. Copiarlo desde:
+  C:\msys64\mingw64\bin\SDL2.dll
+
+
+----------------------------------------------------------------
+1.3  EDITOR: VISUAL STUDIO CODE
+----------------------------------------------------------------
+
+VS Code tiene una configuracion en .vscode/tasks.json que
+apunta a cl.exe (el compilador de Microsoft Visual Studio).
+El boton de compilar del editor NO funciona para este proyecto
+porque cl.exe no conoce las banderas de SDL2 ni el formato
+de GCC.
+
+SIEMPRE compilar desde la terminal integrada de VS Code
+usando el comando de GCC descrito en la seccion 1.4.
+Nunca usar el boton de compilar ni Ctrl+Shift+B.
+
+
+----------------------------------------------------------------
+1.4  COMANDO DE COMPILACION
+----------------------------------------------------------------
+
+Ejecutar desde la carpeta donde estan los archivos .c
+(debe estar a la misma altura que el ejecutable de salida):
+
+  gcc main.c lexer.c parser.c simbolos.c errores.c -o scara.exe -lmingw32 -lSDL2main -lSDL2
+
+Descripcion de cada parte del comando:
+
+  gcc                           invoca el compilador GCC
+  main.c lexer.c parser.c       archivos fuente a compilar
+  simbolos.c errores.c          (todos los .c del proyecto)
+  -o scara.exe                  nombre del ejecutable de salida
+  -lmingw32                     enlaza la biblioteca base de MinGW
+  -lSDL2main                    enlaza el punto de entrada de SDL2
+  -lSDL2                        enlaza la biblioteca SDL2
+
+Las banderas -lSDL2main y -lSDL2 ya se incluyen aunque SDL2
+no este en uso todavia, para que el comando no cambie cuando
+se agregue la visualizacion.
+
+
+----------------------------------------------------------------
+1.5  EJECUTAR EL COMPILADOR SOBRE UN PROGRAMA
+----------------------------------------------------------------
+
+Una vez generado scara.exe, se le pasa como argumento la
+ruta al archivo .scara que se quiere compilar:
+
+  .\scara.exe ruta\al\programa.scara
+
+Ejemplo con un programa de prueba:
+
+  .\scara.exe programasSCARA\correctos\c1_pickandplace.scara
+
+El compilador imprimira en consola:
+  - La tabla de simbolos (todas las VAR y POINT declaradas)
+  - El bytecode generado instruccion por instruccion
+
+Si el programa tiene errores, imprimira el tipo de error,
+el numero de linea, el texto de esa linea y un subrayado
+apuntando al token problematico, y se detendra ahi.
+
+NOTA POWERSHELL:
+  En PowerShell es obligatorio el .\ al inicio del comando.
+  Escribir solo scara.exe sin el punto no funciona en
+  PowerShell (si funciona en CMD).
+
+
+================================================================
+2. ESTRUCTURA DE ARCHIVOS DEL PROYECTO
+================================================================
+
+C:\scara\
+|
++-- .vscode\
+|     tasks.json          (NO usar — apunta a cl.exe, no gcc)
+|
++-- programasCOMPI\       (codigo fuente del compilador en C)
+|     errores.h
+|     errores.c
+|     lexer.h
+|     lexer.c
+|     parser.h
+|     parser.c
+|     simbolos.h
+|     simbolos.c
+|     main.c
+|
++-- programasSCARA\       (programas de prueba en lenguaje SCARA)
+|     correctos\
+|       c1_pickandplace.scara
+|       c2_condicional.scara
+|       c3_repeat.scara
+|       c4_while.scara
+|     errores\
+|       e1.scara
+|     erroresSemanticos\  (es1.scara ... es9.scara)
+|     erroresSintacticos\ (sint1.scara ... sint4.scara)
+|     erroresLexicos\     (lex1.scara ... lex3.scara)
+|
++-- scara.exe             (ejecutable generado por gcc)
+
+
+================================================================
+3. EL LENGUAJE SCARA
+================================================================
+
+Es un lenguaje disenado para controlar un robot SCARA de dos
+segmentos. Los programas se escriben en archivos .scara.
+Es imperativo y simple: tiene declaraciones, instrucciones
+de movimiento, control de flujo y aritmetica basica.
+
+
+----------------------------------------------------------------
+3.1  ESTRUCTURA DE UN PROGRAMA
+----------------------------------------------------------------
+
+  PROGRAM nombre_del_programa
+      # instrucciones y declaraciones aqui
+  END
+
+Todo programa empieza con PROGRAM seguido del nombre y
+termina con END. El compilador rechaza cualquier programa
+que no tenga esa estructura exacta.
+
+
+----------------------------------------------------------------
+3.2  COMENTARIOS
+----------------------------------------------------------------
+
+  # esto es un comentario, el lexer lo ignora completamente
+
+
+----------------------------------------------------------------
+3.3  DECLARACIONES
+----------------------------------------------------------------
+
+  VAR nombre = numero
+      Variable entera. Guarda un solo valor numerico.
+      Ejemplo: VAR i = 0
+
+  POINT nombre = x y z
+      Punto en el espacio 3D. Tres coordenadas enteras en mm.
+      Ejemplo: POINT caja = 150 200 0
+
+RESTRICCION DE PUNTO:
+  El robot tiene L1=200mm y L2=150mm. La distancia del punto
+  al origen debe estar entre 50mm y 350mm. El compilador
+  verifica esto en tiempo de compilacion y rechaza puntos
+  fuera de alcance.
+
+
+----------------------------------------------------------------
+3.4  INSTRUCCIONES DE MOVIMIENTO
+----------------------------------------------------------------
+
+  MOVE punto          Movimiento lineal al punto
+  MOVE x y z          (tambien acepta coordenadas directas)
+
+  MOVEJ punto         Movimiento por trayectoria de articulacion
+  MOVEJ x y z
+
+  APPROACH punto      Acercamiento al punto desde arriba
+  APPROACH x y z
+
+  DEPART distancia    Alejarse verticalmente N milimetros
+                      (distancia debe ser > 0)
+
+  HOME                Regresar a posicion de inicio, sin argumentos
+
+
+----------------------------------------------------------------
+3.5  INSTRUCCIONES DE HERRAMIENTA Y AUXILIARES
+----------------------------------------------------------------
+
+  OPEN                Abrir la pinza del robot
+  CLOSE               Cerrar la pinza del robot
+  SPEED numero        Velocidad en porcentaje: 0 a 100
+  WAIT numero         Pausa en segundos (debe ser > 0)
+  PRINT "texto"       Imprimir un mensaje en consola
+
+
+----------------------------------------------------------------
+3.6  CONTROL DE FLUJO
+----------------------------------------------------------------
+
+  Repeticion fija (n debe ser > 0):
+    REPEAT 3
+        instrucciones
+    END
+
+  Ciclo con condicion:
+    WHILE i < 10
+        i = i + 1
+    END
+
+  Condicional:
+    IF i == 0
+        HOME
+    ELSE
+        MOVE caja
+    END
+
+  Operadores de comparacion disponibles: < > ==
+  Los bloques siempre cierran con END.
+
+
+----------------------------------------------------------------
+3.7  ASIGNACION
+----------------------------------------------------------------
+
+  i = 5          asignacion simple
+  i = i + 1      asignacion con suma
+  i = i - 1      asignacion con resta
+
+  Solo se puede asignar a variables VAR, no a POINT.
+  Solo se admite un operador por asignacion.
+
+
+----------------------------------------------------------------
+3.8  PROGRAMA DE EJEMPLO COMPLETO
+----------------------------------------------------------------
+
+  PROGRAM pickplace
+  VAR i = 0
+  POINT encima_caja  = 150 200 50
+  POINT caja         = 150 200 0
+  POINT encima_mesa  = 300 150 50
+  POINT mesa         = 300 150 0
+  SPEED 70
+  WHILE i < 3
+      MOVE encima_caja
+      APPROACH caja
+      CLOSE
+      DEPART 50
+      MOVE encima_mesa
+      APPROACH mesa
+      OPEN
+      DEPART 50
+      i = i + 1
+  END
+  PRINT "Ciclo completado"
+  END
+
+
+================================================================
+4. ARQUITECTURA DEL COMPILADOR — PIPELINE COMPLETO
+================================================================
+
+  archivo .scara
+        |
+        v
+  [ LEXER ]                   lexer.c / lexer.h
+    Lee caracter a caracter, produce tokens
+        |
+        v  tokens
+  [ PARSER ]                  parser.c / parser.h
+    Lee tokens, verifica semantica,
+    llena bytecode[]
+        |  usa
+        +---> [ TABLA DE SIMBOLOS ]    simbolos.c / simbolos.h
+        +---> [ ERRORES ]              errores.c  / errores.h
+        |
+        v  bytecode[]
+  [ VM en ASM ]               pendiente — vm.asm
+    Lee instrucciones una por una con bucle fetch-decode-execute
+        |
+        v
+  [ CINEMATICA INVERSA ASM ]  pendiente — cinematica.asm
+    Calcula angulos q1 y q2 de los motores dado un punto X,Y
+        |
+        v
+  [ VISUALIZACION ]           pendiente — C con SDL2 + ASM
+    Ventana e infraestructura en C
+    Calculo y dibujo del brazo en ASM (vista isometrica 2.5D)
+
+El arreglo bytecode[] es el puente entre el frontend en C
+y el backend en ASM. El compilador lo llena, la VM lo lee.
+
+
+================================================================
+5. MODULOS IMPLEMENTADOS — DETALLE
+================================================================
+
+
+----------------------------------------------------------------
+5.1  errores.h / errores.c  [COMPLETO]
+----------------------------------------------------------------
+
+Sistema de reporte de errores usado por todos los demas modulos.
+Guarda el texto del programa en memoria para mostrar la linea
+exacta del error con subrayado del token problematico.
+
+Funciones:
+  error_init(fuente)
+      Recibe el texto completo del programa y lo guarda.
+      Se llama una vez al inicio desde main.c.
+
+  error_reportar(tipo, linea, token, mensaje)
+      Imprime el tipo de error (LEXICO / SINTACTICO / SEMANTICO),
+      el numero de linea, el texto de esa linea y el subrayado.
+      Llama a exit(1) para detener el compilador.
+
+  obtener_linea (privada, solo usable dentro de errores.c)
+      Extrae el texto de una linea especifica recorriendo la
+      cadena del programa y contando saltos de linea.
+
+  encontrar_columna (privada)
+      Usa strstr para calcular en que columna de la linea
+      aparece el token, para posicionar el subrayado.
+
+
+----------------------------------------------------------------
+5.2  lexer.h / lexer.c  [COMPLETO]
+----------------------------------------------------------------
+
+Analisis lexico. Lee el texto del programa caracter a caracter
+y lo convierte en tokens que el parser consume.
+
+Tipos definidos:
+  TipoToken (enum)
+      Lista de todos los tokens posibles:
+      palabras clave (MOVE, VAR, WHILE, etc.),
+      operadores (= + - < > ==),
+      categorias genericas (NUMBER, STRING, IDENT),
+      especiales (EOF, UNKNOWN).
+
+  Token (struct)
+      tipo   — valor del enum TipoToken
+      valor  — texto original del token (char[64])
+      linea  — numero de linea donde aparece
+
+  Lexer (struct)
+      fuente — puntero al texto completo del programa
+      pos    — indice del siguiente caracter a leer
+      linea  — contador de lineas (empieza en 1)
+
+Funciones principales:
+  lexer_init(lex, fuente)
+      Inicializa el struct Lexer.
+
+  lexer_siguiente(lex)
+      Funcion principal. Salta espacios y devuelve el
+      proximo token. Detecta en orden:
+        - EOF (caracter \0)
+        - Comentarios (# consume hasta fin de linea,
+          luego se llama a si misma recursivamente)
+        - Palabras e identificadores (isalpha o _,
+          consume alfanumericos, busca en tabla de keywords)
+        - Numeros (isdigit o - seguido de digito,
+          incluye numeros negativos)
+        - Strings (entre comillas, guarda solo el contenido)
+        - Operadores (= detecta si es = o ==, resto directo)
+        - Caracter desconocido -> error lexico
+
+  buscar_keyword(palabra)
+      Recorre la tabla de palabras clave con centinela NULL.
+      Si encuentra coincidencia devuelve el tipo de keyword.
+      Si no, devuelve TOK_IDENT.
+
+
+----------------------------------------------------------------
+5.3  simbolos.h / simbolos.c  [COMPLETO]
+----------------------------------------------------------------
+
+Tabla de simbolos. Memoria del analizador semantico.
+Registra todas las declaraciones VAR y POINT.
+
+Tipos definidos:
+  TipoSimbolo (enum)
+      SIM_VAR (0) y SIM_POINT (1)
+
+  Simbolo (struct)
+      nombre[64]  — texto del identificador
+      tipo        — SIM_VAR o SIM_POINT
+      val1        — valor inicial (VAR) o coordenada X (POINT)
+      val2        — 0 (VAR) o coordenada Y (POINT)
+      val3        — 0 (VAR) o coordenada Z (POINT)
+
+Variables globales (definidas en .c, declaradas extern en .h):
+  tabla_simbolos[64]  — arreglo de hasta 64 simbolos
+  tabla_len           — contador de simbolos registrados
+
+Funciones:
+  tabla_agregar(nombre, tipo, v1, v2, v3)
+      Verifica duplicado con tabla_buscar antes de agregar.
+      Copia los datos en la siguiente posicion disponible.
+
+  tabla_buscar(nombre)
+      Busqueda lineal por nombre con strcmp.
+      Devuelve puntero a la entrada o NULL si no existe.
+      NULL se usa como senal de "no declarado" en el parser.
+
+  tabla_imprimir()
+      Imprime la tabla completa en consola al terminar.
+
+
+----------------------------------------------------------------
+5.4  parser.h / parser.c  [COMPLETO]
+----------------------------------------------------------------
+
+Analisis sintactico y semantico. Lee tokens del lexer,
+verifica la gramatica y la semantica, genera el bytecode.
+
+Tipos definidos:
+  Opcode (enum)
+      Lista de instrucciones del bytecode:
+      OP_MOVE, OP_MOVEJ, OP_APPROACH, OP_DEPART, OP_HOME,
+      OP_OPEN, OP_CLOSE, OP_SPEED, OP_WAIT, OP_PRINT,
+      OP_WHILE, OP_END_WHILE, OP_IF, OP_ELSE, OP_END_IF,
+      OP_REPEAT, OP_END_REPEAT, OP_VAR, OP_POINT,
+      OP_ASSIGN, OP_HALT
+
+  Instruccion (struct)
+      opcode  — valor del enum Opcode
+      arg1    — primer argumento entero
+      arg2    — segundo argumento entero
+      arg3    — tercer argumento entero
+      sval    — argumento de texto (nombre de variable o punto)
+
+  Parser (struct)
+      lex       — puntero al lexer
+      actual    — token que se esta procesando ahora
+      siguiente — lookahead: el token que viene despues
+
+Variables globales:
+  bytecode[256]   — arreglo de hasta 256 instrucciones
+  bytecode_len    — contador de instrucciones emitidas
+
+Jerarquia de funciones (de mayor a menor nivel):
+  parsear_programa
+      Punto de entrada. Consume PROGRAM + nombre,
+      llama parsear_bloque, emite OP_HALT.
+
+  parsear_bloque
+      Motor del parser. Ciclo while que llama
+      parsear_instruccion hasta encontrar END/ELSE/EOF.
+      Se llama a si misma recursivamente para bloques anidados.
+
+  parsear_instruccion
+      Switch central. Lee el token actual y decide
+      a que funcion especializada delegar.
+
+  parsear_movimiento
+      Maneja MOVE, MOVEJ, APPROACH, DEPART, HOME.
+      Verifica: punto declarado, tipo POINT, dist > 0.
+
+  parsear_declaracion
+      Maneja VAR y POINT. Verifica: sin duplicado,
+      alcance fisico del robot (50mm a 350mm).
+
+  parsear_asignacion
+      Maneja nombre = expresion [+/- expresion].
+      Verifica: nombre declarado, tipo VAR.
+
+  parsear_flujo
+      Maneja WHILE, REPEAT, IF/ELSE.
+      Verifica: n > 0 para REPEAT.
+      Llama a parsear_bloque para los bloques internos.
+
+  parsear_expresion
+      Lee un valor: numero literal o nombre de variable.
+      Verifica: nombre declarado, tipo SIM_VAR (no POINT).
+      Devuelve -1 si el valor viene de una variable.
+
+  parsear_condicion
+      Lee izquierda operador derecha para WHILE e IF.
+      Usa parametros puntero para devolver multiples valores.
+
+
+----------------------------------------------------------------
+5.5  main.c  [COMPLETO]
+----------------------------------------------------------------
+
+Punto de entrada. Orquesta todos los modulos en orden:
+
+  1. Verificar que se paso un argumento (nombre del .scara)
+  2. leer_archivo(argv[1])       leer el .scara a memoria con malloc
+  3. error_init(programa)        dar el texto al modulo de errores
+  4. lexer_init(&lex, programa)  inicializar el lexer
+  5. parser_init(&parser, &lex)  inicializar el parser
+  6. parsear_programa(&parser)   compilar el programa completo
+  7. tabla_imprimir()            mostrar la tabla de simbolos
+  8. imprimir bytecode[]         mostrar las instrucciones generadas
+  9. free(programa)              liberar la memoria del texto
+
+NOTA: malloc reserva memoria en el heap (como new en Java).
+free la libera. En C no hay recolector de basura automatico.
+Si no se llama a free hay una fuga de memoria.
+
+
+================================================================
+6. EL BYTECODE — PUENTE ENTRE C Y ASM
+================================================================
+
+El resultado de compilar un .scara es el arreglo bytecode[].
+La VM en ASM lera ese arreglo de corrido y ejecutara cada
+instruccion con un bucle fetch-decode-execute.
+
+Cada entrada es una Instruccion:
+  opcode   que hacer (OP_MOVE, OP_REPEAT, etc.)
+  arg1     primer dato numerico
+  arg2     segundo dato numerico
+  arg3     tercer dato numerico
+  sval     dato de texto (nombre de variable o punto)
+
+Ejemplo de bytecode para "MOVE caja" donde caja=150,200,0:
+  opcode=OP_MOVE  arg1=150  arg2=200  arg3=0  sval="caja"
+
+Diferencia entre TipoToken y Opcode:
+
+  TipoToken es el vocabulario del TEXTO FUENTE.
+  Lo usa el lexer y el parser para leer el programa.
+  Incluye puntuacion (TOK_ASSIGN, TOK_PLUS),
+  categorias genericas (TOK_IDENT, TOK_NUMBER),
+  y estados del lexer (TOK_EOF, TOK_UNKNOWN).
+
+  Opcode es el vocabulario del BYTECODE EJECUTABLE.
+  Lo usa la VM en ASM para ejecutar instrucciones.
+  No tiene puntuacion (ya fue interpretada por el parser).
+  Tiene marcadores de cierre separados (OP_END_WHILE,
+  OP_END_IF, OP_END_REPEAT) aunque en el programa fuente
+  todos cierren con la misma palabra END.
+  Tiene OP_HALT que el programador nunca escribe —
+  el parser lo emite automaticamente al final.
+
+
+================================================================
+7. VERIFICACIONES SEMANTICAS IMPLEMENTADAS
+================================================================
+
+Todas estas verificaciones ocurren durante la compilacion.
+Si alguna falla, el compilador muestra el error y se detiene.
+
+  DECLARACION VAR / POINT
+    - Nombre ya declarado anteriormente
+    - (solo POINT) Punto fuera del alcance fisico del robot
+
+  USO DE NOMBRE EN EXPRESION (WHILE, IF, asignacion)
+    - Variable no declarada
+    - Se uso POINT donde se esperaba VAR
+
+  ASIGNACION
+    - Variable no declarada
+    - No se puede asignar a un POINT
+
+  MOVE / MOVEJ / APPROACH con nombre
+    - Nombre no declarado
+    - Se uso VAR donde se esperaba POINT
+
+  DEPART
+    - Distancia <= 0
+
+  REPEAT
+    - Numero de repeticiones <= 0
+
+  SPEED
+    - Velocidad fuera del rango 0 a 100
+
+  WAIT
+    - Tiempo <= 0
+
+
+================================================================
+8. PROXIMOS PASOS — MODULOS PENDIENTES
+================================================================
+
+
+----------------------------------------------------------------
+8.1  VM EN ASM — maquina virtual
+----------------------------------------------------------------
+
+Es el modulo mas importante de los tres pendientes.
+Sin la VM los otros dos no tienen sentido.
+
+La VM recibe el arreglo bytecode[] y ejecuta cada instruccion.
+Su estructura central es un bucle fetch-decode-execute:
+
+  bucle:
+      cargar instruccion en bytecode[PC]
+      incrementar PC
+      comparar opcode con cada OP_*
+      saltar al manejador correspondiente
+      volver a bucle
+
+  manejador_HALT:
+      terminar ejecucion
+
+Lo que debe hacer la VM por opcode:
+
+  OP_VAR
+      Reservar espacio en una tabla de variables en memoria.
+      Guardar el valor inicial de arg1.
+
+  OP_POINT
+      Registrar arg1/arg2/arg3 como coordenadas X/Y/Z
+      en una tabla de puntos.
+
+  OP_ASSIGN
+      Actualizar el valor de la variable sval.
+      Si arg2=1 sumar, si arg2=-1 restar, si arg2=0 asignar.
+
+  OP_MOVE / OP_MOVEJ / OP_APPROACH
+      Llamar a la rutina de cinematica inversa con arg1/arg2/arg3.
+      Actualizar la posicion actual del robot.
+      Notificar al modulo de visualizacion para redibujar.
+
+  OP_DEPART
+      Subir arg1 milimetros en Z desde la posicion actual.
+
+  OP_HOME
+      Mover a la posicion de referencia 0,0,0.
+
+  OP_OPEN / OP_CLOSE
+      Activar la senal correspondiente de la pinza.
+
+  OP_SPEED
+      Guardar arg1 como velocidad actual.
+
+  OP_WAIT
+      Ejecutar un retardo de arg1 segundos.
+
+  OP_PRINT
+      Imprimir el texto en sval en consola.
+
+  OP_WHILE
+      Evaluar la condicion (arg1 op arg2, con sval como nombre
+      de variable si aplica). Si la condicion es FALSA,
+      saltar al OP_END_WHILE correspondiente.
+
+  OP_END_WHILE
+      Volver al OP_WHILE correspondiente para re-evaluar.
+
+  OP_REPEAT
+      Inicializar un contador con arg1.
+      Si el contador es 0, saltar al OP_END_REPEAT.
+
+  OP_END_REPEAT
+      Decrementar el contador.
+      Si el contador > 0, volver al OP_REPEAT.
+
+  OP_IF
+      Evaluar la condicion. Si es FALSA, saltar al
+      OP_ELSE o OP_END_IF correspondiente.
+
+  OP_ELSE
+      Si se llega desde el bloque IF (condicion verdadera),
+      saltar al OP_END_IF para no ejecutar el bloque ELSE.
+
+  OP_END_IF
+      Marca el fin del bloque. No hace ninguna accion.
+
+PUNTO CRITICO — LOS SALTOS:
+  En ASM no hay bloques ni llaves. Para implementar WHILE,
+  REPEAT e IF hay que saber a que posicion del bytecode[]
+  saltar cuando la condicion es falsa.
+  Estrategia recomendada: hacer un pre-scan del bytecode[]
+  antes de iniciar la ejecucion, recorrerlo una vez y
+  construir una tabla de pares (posicion_inicio, posicion_fin)
+  para cada bloque. Luego la VM consulta esa tabla al momento
+  de evaluar cada salto.
+
+
+----------------------------------------------------------------
+8.2  CINEMATICA INVERSA EN ASM
+----------------------------------------------------------------
+
+El robot tiene dos segmentos: L1=200mm y L2=150mm.
+Dado un punto (X, Y) en el plano horizontal, la cinematica
+inversa calcula los angulos q1 y q2 que los motores deben
+adoptar para llegar a ese punto.
+
+Las formulas matematicas son:
+
+  cos(q2) = (X^2 + Y^2 - L1^2 - L2^2) / (2 * L1 * L2)
+  q2 = acos(resultado)
+
+  q1 = atan2(Y, X) - atan2(L2*sin(q2), L1 + L2*cos(q2))
+
+El problema en ASM es que acos y atan2 son operaciones de
+punto flotante complejas. La estrategia recomendada es usar
+tablas precomputadas en aritmetica entera:
+
+  - Precomputar una tabla de seno y coseno para angulos
+    de 0 a 360 grados con precision entera.
+    Por ejemplo: sin(x) * 1000 para evitar decimales.
+  - Buscar el angulo en la tabla por busqueda binaria.
+  - Todos los calculos en aritmetica entera, sin FPU.
+
+RECOMENDACION:
+  Implementar y probar la VM completa con instrucciones
+  simples (OPEN, CLOSE, PRINT, HOME) antes de conectar
+  la cinematica inversa.
+
+
+----------------------------------------------------------------
+8.3  VISUALIZACION — SDL2 EN C + DIBUJO DEL BRAZO EN ASM
+----------------------------------------------------------------
+
+DECISION CONFIRMADA: vista isometrica 2.5D.
+  La vista isometrica proyecta el espacio 3D en 2D con un
+  angulo que da sensacion de profundidad sin necesitar OpenGL.
+  Es visualmente convincente y tecnicamente manejable.
+
+Division del trabajo entre C y ASM:
+
+  C con SDL2 (infraestructura):
+    - Crear la ventana y el renderer
+    - Loop de eventos (cerrar ventana, teclado)
+    - Llamar a la funcion ASM de dibujo en cada frame
+    - Limpiar y presentar el frame (SDL_RenderPresent)
+
+  ASM (la salida visual — requisito de la maestra):
+    - Recibir los angulos q1 y q2 actuales del robot
+    - Calcular las posiciones de los joints en pixeles
+      usando la proyeccion isometrica
+    - Llamar a SDL_RenderDrawLine para dibujar cada segmento
+    - Calcular posiciones intermedias para animacion suave
+
+Proyeccion isometrica simplificada:
+  Dado un punto (X, Y, Z) del robot en milimetros:
+
+    pixel_x = centro_x + (X - Y) * cos(30) * escala
+    pixel_y = centro_y - Z * escala + (X + Y) * sin(30) * escala
+
+  Estos calculos de cos(30) y sin(30) tambien se resuelven
+  con tablas precomputadas en ASM.
+
+Componentes a implementar en orden sugerido:
+  1. Ventana SDL2 basica en C que abre y cierra correctamente
+  2. Funcion ASM que dibuja dos lineas fijas (brazo estatico)
+  3. Conectar con los angulos reales de la cinematica inversa
+  4. Agregar interpolacion entre frames para animacion suave
+  5. Agregar indicadores visuales (pinza abierta/cerrada, etc.)
+
+RECORDATORIO:
+  SDL2.dll debe estar en la misma carpeta que scara.exe.
+  Copiarlo desde: C:\msys64\mingw64\bin\SDL2.dll
+
+
+================================================================
+9. RESUMEN DE ESTADO DEL PROYECTO
+================================================================
+
+  [LISTO]     errores.h / errores.c
+              Sistema de reporte con subrayado del token
+
+  [LISTO]     lexer.h / lexer.c
+              Analisis lexico completo
+
+  [LISTO]     simbolos.h / simbolos.c
+              Tabla de simbolos
+
+  [LISTO]     parser.h / parser.c
+              Analisis sintactico y semantico, generacion de bytecode
+
+  [LISTO]     main.c
+              Orquestacion, lectura de archivo, impresion de resultados
+
+  [LISTO]     Programas de prueba
+              Correctos, erroresLexicos, erroresSintacticos,
+              erroresSemanticos
+
+  [PENDIENTE] VM en ASM
+              Bucle fetch-decode-execute, manejo de todos los opcodes,
+              tabla de saltos para bloques WHILE/REPEAT/IF
+
+  [PENDIENTE] Cinematica inversa en ASM
+              Tablas precomputadas de seno/coseno,
+              calculo de q1 y q2 en aritmetica entera
+
+  [PENDIENTE] Visualizacion
+              C con SDL2 para infraestructura de ventana,
+              ASM para calculo de proyeccion isometrica y dibujo
+
+================================================================
+  FIN DEL DOCUMENTO
+================================================================

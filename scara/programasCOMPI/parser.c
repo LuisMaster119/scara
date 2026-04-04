@@ -20,9 +20,50 @@ void emitir(Opcode op, int a1, int a2, int a3, const char* sval) {
     bytecode[bytecode_len].arg1   = a1;
     bytecode[bytecode_len].arg2   = a2;
     bytecode[bytecode_len].arg3   = a3;
+    bytecode[bytecode_len].flags  = 0;
     if (sval) strcpy(bytecode[bytecode_len].sval, sval);
     else      bytecode[bytecode_len].sval[0] = '\0';
+    bytecode[bytecode_len].sval2[0] = '\0';
+    bytecode[bytecode_len].sval3[0] = '\0';
     bytecode_len++;
+}
+
+static void emitir_assign_ext(int a1, int op, int a3,
+                              int flags,
+                              const char* destino,
+                              const char* nombre_izq,
+                              const char* nombre_der) {
+    emitir(OP_ASSIGN, a1, op, a3, destino);
+    bytecode[bytecode_len - 1].flags = flags;
+    if (nombre_izq) strcpy(bytecode[bytecode_len - 1].sval2, nombre_izq);
+    if (nombre_der) strcpy(bytecode[bytecode_len - 1].sval3, nombre_der);
+}
+
+const char* opcode_a_texto(Opcode op) {
+    switch (op) {
+        case OP_MOVE:       return "OP_MOVE";
+        case OP_MOVEJ:      return "OP_MOVEJ";
+        case OP_APPROACH:   return "OP_APPROACH";
+        case OP_DEPART:     return "OP_DEPART";
+        case OP_HOME:       return "OP_HOME";
+        case OP_OPEN:       return "OP_OPEN";
+        case OP_CLOSE:      return "OP_CLOSE";
+        case OP_SPEED:      return "OP_SPEED";
+        case OP_WAIT:       return "OP_WAIT";
+        case OP_PRINT:      return "OP_PRINT";
+        case OP_WHILE:      return "OP_WHILE";
+        case OP_END_WHILE:  return "OP_END_WHILE";
+        case OP_IF:         return "OP_IF";
+        case OP_ELSE:       return "OP_ELSE";
+        case OP_END_IF:     return "OP_END_IF";
+        case OP_REPEAT:     return "OP_REPEAT";
+        case OP_END_REPEAT: return "OP_END_REPEAT";
+        case OP_VAR:        return "OP_VAR";
+        case OP_POINT:      return "OP_POINT";
+        case OP_ASSIGN:     return "OP_ASSIGN";
+        case OP_HALT:       return "OP_HALT";
+        default:            return "OP_UNKNOWN";
+    }
 }
 
 // --- Estado del Parser ------------------------------------
@@ -277,13 +318,30 @@ void parsear_asignacion(Parser* p) {
         parser_avanzar(p);
         char nombre_der[64] = "";
         int val_der = parsear_expresion(p, nombre_der);
-        emitir(OP_ASSIGN,
-               (val_izq == -1 ? 0 : val_izq),
-               (op == TOK_PLUS ? 1 : -1),
-               (val_der == -1 ? 0 : val_der),
-               nombre);
+        int flags = 0;
+        if (val_izq == -1) flags |= INS_F_ARG1_VAR;
+        if (val_der == -1) flags |= INS_F_ARG3_VAR;
+        emitir_assign_ext(
+            (val_izq == -1 ? 0 : val_izq),
+            (op == TOK_PLUS ? 1 : -1),
+            (val_der == -1 ? 0 : val_der),
+            flags,
+            nombre,
+            (val_izq == -1 ? nombre_izq : NULL),
+            (val_der == -1 ? nombre_der : NULL)
+        );
     } else {
-        emitir(OP_ASSIGN, val_izq, 0, 0, nombre);
+        int flags = 0;
+        if (val_izq == -1) flags |= INS_F_ARG1_VAR;
+        emitir_assign_ext(
+            (val_izq == -1 ? 0 : val_izq),
+            0,
+            0,
+            flags,
+            nombre,
+            (val_izq == -1 ? nombre_izq : NULL),
+            NULL
+        );
     }
 }
 

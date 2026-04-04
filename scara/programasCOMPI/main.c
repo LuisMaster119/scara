@@ -4,11 +4,12 @@
 #include "parser.h"
 #include "simbolos.h"
 #include "errores.h"
+#include "vm.h"
 
 // --- Leer archivo completo a string ----------------------
 
 char* leer_archivo(const char* ruta) {
-    FILE* f = fopen(ruta, "r");
+    FILE* f = fopen(ruta, "rb");
     if (!f) {
         fprintf(stderr, "Error: no se puede abrir '%s'\n", ruta);
         exit(1);
@@ -23,8 +24,8 @@ char* leer_archivo(const char* ruta) {
         fprintf(stderr, "Error: memoria insuficiente\n");
         exit(1);
     }
-    fread(contenido, 1, tam, f);
-    contenido[tam] = '\0';
+    size_t leidos = fread(contenido, 1, tam, f);
+    contenido[leidos] = '\0';
     fclose(f);
 
     return contenido;
@@ -64,17 +65,23 @@ int main(int argc, char* argv[]) {
 
     // mostrar bytecode generado
     printf("\n=== BYTECODE GENERADO ===\n");
-    printf("%-4s %-12s %-6s %-6s %-6s %s\n",
-           "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "SVAL");
-    printf("-----------------------------------------\n");
+        printf("%-4s %-14s %-6s %-6s %-6s %-5s %-14s %-14s %-14s\n",
+            "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "FLAGS", "SVAL", "SVAL2", "SVAL3");
+        printf("-----------------------------------------------------------------------------------------\n");
 
     for (int i = 0; i < bytecode_len; i++) {
         Instruccion* ins = &bytecode[i];
-        printf("%-4d %-12d %-6d %-6d %-6d %s\n",
-               i, ins->opcode,
+         printf("%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s\n",
+             i, opcode_a_texto(ins->opcode),
                ins->arg1, ins->arg2, ins->arg3,
-               ins->sval);
+             ins->flags,
+             ins->sval,
+             ins->sval2,
+             ins->sval3);
     }
+
+        printf("\n=== EJECUCION VM (FASE 1) ===\n");
+        vm_ejecutar(bytecode, bytecode_len, 1);
 
     free(programa);
     return 0;

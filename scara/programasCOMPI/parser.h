@@ -23,8 +23,14 @@ typedef struct {
     int    arg1;
     int    arg2;
     int    arg3;
+    int    flags;
     char   sval[64];
+    char   sval2[64];
+    char   sval3[64];
 } Instruccion;
+
+#define INS_F_ARG1_VAR 1
+#define INS_F_ARG3_VAR 2
 
 // --- Estado del Parser ------------------------------------
 
@@ -44,5 +50,6 @@ extern int         bytecode_len;
 
 void parser_init(Parser* p, Lexer* lex);
 void parsear_programa(Parser* p);
+const char* opcode_a_texto(Opcode op);
 
 #endif

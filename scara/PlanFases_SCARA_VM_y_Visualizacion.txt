@@ -92,13 +92,14 @@ Extensiones de VS Code (opcionales pero recomendadas):
 3.1 Compilar Fase 1 (frontend + VM)
 Desde: scara/programasCOMPI/
 
-  gcc main.c lexer.c parser.c simbolos.c errores.c vm.c -o scara.exe \
+  nasm -f win64 cinematica.asm -o cinematica_asm.obj
+  gcc main.c lexer.c parser.c simbolos.c errores.c vm.c cinematica.c cinematica_asm.obj -o scara.exe \
       -lmingw32 -lSDL2main -lSDL2
 
 Si PowerShell no reconoce gcc desde PATH, usar ruta absoluta:
 
   & C:/msys64/mingw64/bin/gcc.exe main.c lexer.c parser.c simbolos.c \
-    errores.c vm.c -o scara.exe -lmingw32 -lSDL2main -lSDL2
+    errores.c vm.c cinematica.c -o scara.exe -lmingw32 -lSDL2main -lSDL2
 
 3.2 Ejecutar sobre un caso correcto
 
@@ -111,6 +112,14 @@ Salida esperada:
 - Inicio de ejecucion VM (FASE 1)
 - Trazas [VM] por instruccion
 - Fin con [VM] HALT (si el programa llega a HALT)
+
+3.2.1 Selftest de cinematica (Fase 4)
+
+  .\scara.exe --ik-selftest
+
+Salida esperada:
+- Resumen tipo: [IK SELFTEST] total=... ok=... fail=0
+- Si fail>0, se imprimen puntos XY con mismatch C vs ASM
 
 3.3 Ejecutar sobre un caso con error
 
@@ -298,9 +307,84 @@ Cambios propuestos:
 - Busqueda de angulos y calculo de q1/q2.
 - Manejo de casos fuera de dominio.
 
+Avance implementado en esta iteracion (bloque inicial de Fase 4):
+- IK real integrada en VM usando formulas de cinematica inversa
+  para robot de 2 eslabones (q1, q2) en tiempo de ejecucion.
+- Reemplazo del IK_STUB por salida real de angulos en consola.
+- Mantiene validaciones de dominio y alcance con error controlado.
+- Interfaz y salida listas para migrar este calculo a ASM en el
+  siguiente subpaso de Fase 4.
+- Refactor de arquitectura para migracion C/ASM:
+  - Nuevo modulo dedicado: cinematica.h / cinematica.c
+  - vm.c consume la API cinematica_ik_xy(...)
+  - Nuevo esqueleto: cinematica.asm (pendiente implementacion)
+- API de cinematica ampliada para configuraciones duales:
+  - Solucion codo arriba (IK_UP)
+  - Solucion codo abajo (IK_DOWN)
+  - Helper de alcance XY para validaciones de borde
+- Integracion C/ASM funcional para validar ABI y enlace:
+  - cinematica.asm exporta cinematica_ik_xy_asm
+  - Build con NASM + GCC integrado al ejecutable
+  - VM verifica consistencia C vs ASM en runtime (IK_ASM)
+- Bloque ASM real implementado:
+  - cinematica_ik_xy_asm valida alcance XY en enteros dentro de ASM
+  - luego delega al nucleo C compartido para resolver trigonometria
+  - deja lista la migracion del nucleo trigonometrico a ASM puro
+- Bloque ASM extendido por modo:
+  - nueva ruta cinematica_ik_xy_modo_asm (codo arriba / codo abajo)
+  - wrapper cinematica_ik_xy_asm mantiene compatibilidad con modo por defecto
+  - VM ahora verifica IK_UP/IK_DOWN contra IK_ASM_UP/IK_ASM_DOWN
+- Ruta ASM-friendly por lookup implementada:
+  - ASM delega a un nucleo C tipo tabla (sin acos directo) para q2
+  - q2 se aproxima por busqueda en tabla de cosenos por grado
+  - comparacion C vs ASM usa tolerancia angular controlada (2 grados)
+- Avance adicional del bloque:
+  - q2 por lookup ahora se calcula directamente dentro de ASM
+  - ASM consume tabla de cosenos compartida y entrega q2 firmado por modo
+  - solo q1 permanece delegado al helper C (siguiente candidato a migrar)
+- Avance incremental extra:
+  - ASM ahora calcula tambien k1/k2 en enteros desde tablas seno/coseno
+  - C solo resuelve el atan2 final de q1 desde componentes (k1,k2)
+  - arquitectura lista para migrar el ultimo tramo de q1 a ASM puro
+- Herramienta de validacion automatica agregada:
+  - modo --ik-selftest en main.c
+  - barrido de puntos alcanzables y comparacion C vs ASM (tolerancia 0)
+
 Validacion:
 - Casos de puntos en alcance y borde de alcance.
 - Comparar resultados contra calculo esperado aproximado.
+
+Validacion ejecutada (avance parcial de Fase 4):
+- c7_movej_stub.scara: se reportan q1/q2 reales en MOVEJ/MOVE,
+  EXIT=0.
+- c1_pickandplace.scara: secuencia de angulos estable en runtime,
+  EXIT=0.
+- es10_runtime_move_fuera_alcance.scara: error de alcance conservado,
+  EXIT=1.
+- Refactor cinematica a modulo separado compilando y ejecutando sin regresion,
+  EXIT=0 en correctos y EXIT=1 en error runtime esperado.
+- c8_ik_bordes.scara: prueba en borde minimo/maximo de alcance,
+  IK_UP e IK_DOWN estables, EXIT=0.
+- Integracion C/ASM verificada:
+  - c7_movej_stub.scara y c8_ik_bordes.scara reportan IK_UP/IK_DOWN/IK_ASM
+    consistentes, EXIT=0.
+  - es10_runtime_move_fuera_alcance.scara mantiene VM ERROR y EXIT=1.
+- ASM con validacion de alcance activa verificado en runtime sin regresiones
+  (correctos EXIT=0, error de alcance EXIT=1).
+- Selftest IK ejecutado: total=604, ok=604, fail=0.
+- Selftest IK dual (UP+DOWN) ejecutado: total=1208, ok=1208, fail=0.
+- Selftest IK dual con ruta lookup asm-friendly: total=1208, ok=1208, fail=0.
+- Selftest dual revalidado tras mover q2 a ASM directo: total=1208, ok=1208, fail=0.
+- Selftest dual revalidado tras mover k1/k2 a ASM: total=1208, ok=1208, fail=0.
+- Selftest dual revalidado tras correccion de atan2 ASM (cuadrantes/signos):
+  total=1208, ok=1208, fail=0.
+- Prueba funcional c7_movej_stub.scara revalidada tras fix atan2 ASM:
+  IK C/ASM consistente en runtime y EXIT=0.
+- Prueba negativa es10_runtime_move_fuera_alcance.scara revalidada:
+  VM ERROR esperado y EXIT=1.
+
+Estado de Fase 4:
+- CIERRE FORMAL COMPLETADO.
 
 Salida esperada:
 - Angulos coherentes y estables para puntos validos.
@@ -372,7 +456,7 @@ Control:
 [x] Fase 1 VM minima cerrada y validada
 [x] Fase 2 flujo completo cerrada y validada
 [x] Fase 3 movimientos con estado cerrada y validada
-[ ] Fase 4 cinematica inversa real
+[x] Fase 4 cinematica inversa real cerrada y validada
 [ ] Fase 5 visualizacion SDL2 + ASM
 [ ] Pruebas finales integrales
 
@@ -380,21 +464,22 @@ Control:
 ================================================================
 8. SIGUIENTE PASO RECOMENDADO INMEDIATO
 ================================================================
-Iniciar Fase 4: Cinematica inversa ASM real.
+Iniciar Fase 5: visualizacion SDL2 + ASM (isometrica 2.5D).
 
 Objetivo inmediato:
-- Crear cinematica.asm con interfaz clara de entrada/salida para la VM.
-- Implementar calculo base de q1/q2 con estrategia entera/tablas.
-- Definir manejo de casos fuera de dominio (saturacion o error controlado).
+- Crear ventana SDL2, renderer y loop de eventos estable.
+- Consumir posicion runtime del robot para dibujar segmentos en 2.5D.
+- Integrar estado de pinza (OPEN/CLOSE) en la visualizacion.
 
-Validacion minima de entrada a Fase 4:
-- Pruebas puntuales de puntos validos y de borde de alcance.
-- Comparacion aproximada de q1/q2 contra referencia esperada.
+Validacion minima de entrada a Fase 5:
+- Ventana abre/cierra sin crash ni fugas evidentes.
+- c1_pickandplace.scara se visualiza con trayectoria coherente.
+- c2_condicional.scara no rompe el loop de render.
 
-Criterio de cierre de Fase 4:
-- q1/q2 coherentes y estables en puntos validos
-- Rechazo o manejo controlado de casos fuera de dominio
-- Integracion lista para enlazar con visualizacion de Fase 5
+Criterio de cierre de Fase 5:
+- Render estable durante toda la ejecucion del bytecode.
+- Trayectoria visible y consistente con el estado de VM.
+- Cierre limpio de ventana y retorno correcto del ejecutable.
 
 ================================================================
 FIN

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <windows.h>
 #include "vm.h"
+#include "cinematica.h"
 
 #define VM_MAX_VARS 128
 #define VM_MAX_CODE 256
@@ -53,11 +54,56 @@ static void vm_trazar_hacia(const char* etiqueta, int x_obj, int y_obj, int z_ob
     }
 }
 
-static void vm_imprimir_stub_angulos(int x, int y) {
-    /* Stub simple para preparar la futura cinematica inversa real (Fase 4). */
-    int q1 = x / 10;
-    int q2 = y / 10;
-    printf("[VM] IK_STUB -> q1=%d q2=%d\n", q1, q2);
+static int vm_imprimir_ik(int x, int y) {
+    const int tol_deg = 2;
+    int q1_up = 0, q2_up = 0;
+    int q1_dn = 0, q2_dn = 0;
+    int q1_asm_up = 0, q2_asm_up = 0;
+    int q1_asm_dn = 0, q2_asm_dn = 0;
+    int ok_c = 0, ok_asm = 0;
+    int coincide_up = 0, coincide_dn = 0;
+
+    if (!cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ARRIBA, &q1_up, &q2_up) ||
+        !cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ABAJO, &q1_dn, &q2_dn)) {
+        fprintf(stderr, "VM ERROR: IK fuera de dominio para XY=(%d,%d)\n", x, y);
+        return 0;
+    }
+
+    coincide_up = cinematica_comparar_c_vs_asm_modo(
+        x, y,
+        CIN_MODO_CODO_ARRIBA, tol_deg,
+        &ok_c, &ok_asm,
+        &q1_up, &q2_up,
+        &q1_asm_up, &q2_asm_up
+    );
+
+    if (!ok_c || !ok_asm || !coincide_up) {
+        fprintf(stderr,
+                "VM ERROR: inconsistencia IK_UP C/ASM en XY=(%d,%d) C=(%d,%d) ASM=(%d,%d)\n",
+                x, y, q1_up, q2_up, q1_asm_up, q2_asm_up);
+        return 0;
+    }
+
+    coincide_dn = cinematica_comparar_c_vs_asm_modo(
+        x, y,
+        CIN_MODO_CODO_ABAJO, tol_deg,
+        &ok_c, &ok_asm,
+        &q1_dn, &q2_dn,
+        &q1_asm_dn, &q2_asm_dn
+    );
+
+    if (!ok_c || !ok_asm || !coincide_dn) {
+        fprintf(stderr,
+                "VM ERROR: inconsistencia IK_DOWN C/ASM en XY=(%d,%d) C=(%d,%d) ASM=(%d,%d)\n",
+                x, y, q1_dn, q2_dn, q1_asm_dn, q2_asm_dn);
+        return 0;
+    }
+
+    printf("[VM] IK_UP   -> q1=%d q2=%d\n", q1_up, q2_up);
+    printf("[VM] IK_DOWN -> q1=%d q2=%d\n", q1_dn, q2_dn);
+    printf("[VM] IK_ASM_UP   -> q1=%d q2=%d\n", q1_asm_up, q2_asm_up);
+    printf("[VM] IK_ASM_DOWN -> q1=%d q2=%d\n", q1_asm_dn, q2_asm_dn);
+    return 1;
 }
 
 static int vm_validar_objetivo_movimiento(int x, int y, int z, const char* op) {
@@ -387,7 +433,7 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 vm_trazar_hacia("MOVE_LIN", ins->arg1, ins->arg2, ins->arg3,
                                vm_calcular_pasos_movimiento());
                 vm_imprimir_posicion("MOVE");
-                vm_imprimir_stub_angulos(pos_x, pos_y);
+                if (!vm_imprimir_ik(pos_x, pos_y)) return 1;
                 break;
 
             case OP_MOVEJ:
@@ -406,7 +452,7 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 }
 
                 vm_imprimir_posicion("MOVEJ");
-                vm_imprimir_stub_angulos(pos_x, pos_y);
+                if (!vm_imprimir_ik(pos_x, pos_y)) return 1;
                 break;
 
             case OP_APPROACH:
@@ -425,7 +471,7 @@ int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 pos_y = ins->arg2;
                 pos_z = ins->arg3;
                 vm_imprimir_posicion("APPROACH");
-                vm_imprimir_stub_angulos(pos_x, pos_y);
+                if (!vm_imprimir_ik(pos_x, pos_y)) return 1;
                 break;
 
             case OP_DEPART:

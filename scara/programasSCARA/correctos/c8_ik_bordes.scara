@@ -1,0 +1,8 @@
+PROGRAM ik_bordes
+POINT borde_max = 350 0 0
+POINT borde_min = 50 0 0
+SPEED 40
+MOVE borde_max
+MOVE borde_min
+PRINT "ik bordes ok"
+END

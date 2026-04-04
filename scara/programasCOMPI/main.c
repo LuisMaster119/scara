@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "lexer.h"
 #include "parser.h"
 #include "simbolos.h"
 #include "errores.h"
 #include "vm.h"
+#include "cinematica.h"
 
 // --- Leer archivo completo a string ----------------------
 
@@ -33,7 +35,48 @@ char* leer_archivo(const char* ruta) {
 
 // --- Main ------------------------------------------------
 
+static int ejecutar_ik_selftest(void) {
+    const int tol_deg = 2;
+    int total = 0;
+    int ok = 0;
+    int fail = 0;
+    const int modos[2] = { CIN_MODO_CODO_ARRIBA, CIN_MODO_CODO_ABAJO };
+    const char* modo_txt[2] = { "UP", "DOWN" };
+
+    printf("=== IK SELFTEST C vs ASM ===\n");
+    for (int x = -350; x <= 350; x += 25) {
+        for (int y = -350; y <= 350; y += 25) {
+            if (!cinematica_xy_en_alcance(x, y)) continue;
+
+            for (int m = 0; m < 2; m++) {
+                int ok_c = 0, ok_asm = 0;
+                int q1_c = 0, q2_c = 0;
+                int q1_asm = 0, q2_asm = 0;
+
+                total++;
+                if (cinematica_comparar_c_vs_asm_modo(x, y, modos[m], tol_deg,
+                                                      &ok_c, &ok_asm,
+                                                      &q1_c, &q2_c,
+                                                      &q1_asm, &q2_asm)) {
+                    ok++;
+                } else {
+                    fail++;
+                    printf("[IK MISMATCH %s] XY=(%d,%d) C=(%d,%d) ASM=(%d,%d) okC=%d okASM=%d\n",
+                           modo_txt[m], x, y, q1_c, q2_c, q1_asm, q2_asm, ok_c, ok_asm);
+                }
+            }
+        }
+    }
+
+    printf("[IK SELFTEST] total=%d ok=%d fail=%d\n", total, ok, fail);
+    return (fail == 0) ? 0 : 1;
+}
+
 int main(int argc, char* argv[]) {
+
+    if (argc >= 2 && strcmp(argv[1], "--ik-selftest") == 0) {
+        return ejecutar_ik_selftest();
+    }
 
     // verificar argumento
     if (argc < 2) {

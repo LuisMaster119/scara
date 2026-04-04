@@ -232,9 +232,54 @@ Cambios propuestos:
 - Estado interno de posicion actual (x,y,z).
 - Stub temporal de conversion a angulos (placeholder).
 
+Avance implementado en esta iteracion:
+- VM con handlers activos para OP_MOVE, OP_MOVEJ, OP_APPROACH,
+  OP_DEPART y OP_HOME sobre estado interno de posicion (x,y,z).
+- OP_POINT tratado como declaracion runtime sin efecto de movimiento
+  (no altera posicion).
+- Trazas de posicion activas por instruccion de movimiento para
+  seguimiento de trayectoria en consola.
+- Refinamiento de semantica de movimiento:
+  - OP_APPROACH ahora ejecuta 2 etapas (altura segura + descenso)
+  - OP_MOVEJ muestra trayectoria articular (stub) diferenciada
+  - Stub de cinematica en consola (IK_STUB q1/q2) como puente a Fase 4
+- Robustez runtime agregada en VM:
+  - Validacion de alcance XY para MOVE/MOVEJ/APPROACH (radio 50-350 mm)
+  - Validacion de Z >= 0 para objetivos de movimiento
+  - Errores runtime de VM ahora propagan codigo de salida EXIT=1
+- Perfil de trayectoria refinado por tipo de movimiento:
+  - MOVE simula trayectoria lineal por pasos (MOVE_LIN)
+  - MOVEJ simula trayectoria segmentada (elevacion, traslado, descenso)
+  - La cantidad de pasos de trazado depende de SPEED (mas velocidad, menos pasos)
+
 Validacion:
 - Probar c1_pickandplace.scara.
 - Confirmar actualizacion de posicion paso a paso.
+
+Validacion ejecutada (avance parcial de Fase 3):
+- c1_pickandplace.scara: trayectoria y cambios de posicion visibles,
+  EXIT=0.
+- c5_nested_while_if.scara: no regresion de flujo, EXIT=0.
+- c3_repeat.scara: no regresion de flujo/repeticion, EXIT=0.
+- c7_movej_stub.scara: MOVEJ diferenciado, APPROACH en 2 etapas,
+  IK_STUB visible, EXIT=0.
+- es10_runtime_move_fuera_alcance.scara: MOVE invalido detectado en VM,
+  ejecucion detenida y EXIT=1.
+
+Validacion final de cierre (Fase 3):
+- Casos correctos:
+  - c1_pickandplace.scara -> EXIT=0
+  - c3_repeat.scara -> EXIT=0
+  - c5_nested_while_if.scara -> EXIT=0
+  - c7_movej_stub.scara -> EXIT=0
+- Casos de error:
+  - lex1_caracter_desconocido.scara -> EXIT=1
+  - sint1_while_sin_end.scara -> EXIT=1
+  - es1_var_no_declarada.scara -> EXIT=1
+  - es10_runtime_move_fuera_alcance.scara -> EXIT=1
+
+Estado de Fase 3:
+- CIERRE FORMAL COMPLETADO.
 
 Salida esperada:
 - Registro en consola de trayectoria.
@@ -326,7 +371,7 @@ Control:
 ================================================================
 [x] Fase 1 VM minima cerrada y validada
 [x] Fase 2 flujo completo cerrada y validada
-[ ] Fase 3 movimientos con estado
+[x] Fase 3 movimientos con estado cerrada y validada
 [ ] Fase 4 cinematica inversa real
 [ ] Fase 5 visualizacion SDL2 + ASM
 [ ] Pruebas finales integrales
@@ -335,22 +380,21 @@ Control:
 ================================================================
 8. SIGUIENTE PASO RECOMENDADO INMEDIATO
 ================================================================
-Iniciar Fase 3: Movimiento con stub de cinematica.
+Iniciar Fase 4: Cinematica inversa ASM real.
 
 Objetivo inmediato:
-- Implementar OP_MOVE, OP_MOVEJ, OP_APPROACH y OP_DEPART con
-  actualizacion de estado interno de posicion (x, y, z).
-- Mantener trazas claras de posicion y estado de pinza/velocidad.
-- Conservar OP_HOME como reinicio de posicion de referencia.
+- Crear cinematica.asm con interfaz clara de entrada/salida para la VM.
+- Implementar calculo base de q1/q2 con estrategia entera/tablas.
+- Definir manejo de casos fuera de dominio (saturacion o error controlado).
 
-Validacion minima de entrada a Fase 3:
-- c1_pickandplace.scara
-- c5_nested_while_if.scara (como control de no regresion de flujo)
+Validacion minima de entrada a Fase 4:
+- Pruebas puntuales de puntos validos y de borde de alcance.
+- Comparacion aproximada de q1/q2 contra referencia esperada.
 
-Criterio de cierre de Fase 3:
-- El estado de posicion evoluciona correctamente por instruccion
-- No hay regresion en control de flujo de Fase 2
-- EXIT=0 en correctos y EXIT=1 en errores esperados
+Criterio de cierre de Fase 4:
+- q1/q2 coherentes y estables en puntos validos
+- Rechazo o manejo controlado de casos fuera de dominio
+- Integracion lista para enlazar con visualizacion de Fase 5
 
 ================================================================
 FIN

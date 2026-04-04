@@ -6,6 +6,7 @@
 
 #define VM_MAX_VARS 128
 #define VM_MAX_CODE 256
+#define VM_APPROACH_CLEARANCE 50
 
 typedef struct {
     char nombre[64];
@@ -24,6 +25,61 @@ typedef struct {
     int if_idx;
     int else_idx;
 } IfFrame;
+
+static void vm_imprimir_posicion(const char* etiqueta) {
+    printf("[VM] %s -> posicion (%d,%d,%d)\n", etiqueta, pos_x, pos_y, pos_z);
+}
+
+static int vm_calcular_pasos_movimiento(void) {
+    /* A mayor velocidad, menos pasos de simulacion. */
+    int pasos = 11 - (velocidad_actual / 10);
+    if (pasos < 3) pasos = 3;
+    if (pasos > 10) pasos = 10;
+    return pasos;
+}
+
+static void vm_trazar_hacia(const char* etiqueta, int x_obj, int y_obj, int z_obj, int pasos) {
+    int x0 = pos_x;
+    int y0 = pos_y;
+    int z0 = pos_z;
+
+    if (pasos < 1) pasos = 1;
+    for (int i = 1; i <= pasos; i++) {
+        pos_x = x0 + ((x_obj - x0) * i) / pasos;
+        pos_y = y0 + ((y_obj - y0) * i) / pasos;
+        pos_z = z0 + ((z_obj - z0) * i) / pasos;
+        printf("[VM] %s paso %d/%d -> posicion (%d,%d,%d)\n",
+               etiqueta, i, pasos, pos_x, pos_y, pos_z);
+    }
+}
+
+static void vm_imprimir_stub_angulos(int x, int y) {
+    /* Stub simple para preparar la futura cinematica inversa real (Fase 4). */
+    int q1 = x / 10;
+    int q2 = y / 10;
+    printf("[VM] IK_STUB -> q1=%d q2=%d\n", q1, q2);
+}
+
+static int vm_validar_objetivo_movimiento(int x, int y, int z, const char* op) {
+    int L1 = 200, L2 = 150;
+    int d2 = x * x + y * y;
+    int dmax = (L1 + L2) * (L1 + L2);
+    int dmin = (L1 - L2) * (L1 - L2);
+
+    if (d2 < dmin || d2 > dmax) {
+        fprintf(stderr,
+                "VM ERROR: %s fuera de alcance XY (%d,%d), rango radial [%d,%d] mm\n",
+                op, x, y, L1 - L2, L1 + L2);
+        return 0;
+    }
+
+    if (z < 0) {
+        fprintf(stderr, "VM ERROR: %s con Z invalida (%d), debe ser >= 0\n", op, z);
+        return 0;
+    }
+
+    return 1;
+}
 
 static void vm_reset_estado(void) {
     memset(vm_vars, 0, sizeof(vm_vars));
@@ -234,7 +290,7 @@ static int vm_precalcular_saltos(Instruccion* programa, int longitud,
     return 1;
 }
 
-void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
+int vm_ejecutar(Instruccion* programa, int longitud, int traza) {
     vm_reset_estado();
 
     int jump_end_while[VM_MAX_CODE];
@@ -251,7 +307,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
     if (longitud > VM_MAX_CODE) {
         fprintf(stderr, "VM ERROR: bytecode excede limite (%d)\n", VM_MAX_CODE);
-        return;
+        return 1;
     }
 
     if (!vm_precalcular_saltos(programa, longitud,
@@ -261,7 +317,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                                jump_else_end,
                                jump_end_repeat,
                                jump_back_repeat)) {
-        return;
+        return 1;
     }
 
     int pc = 0;
@@ -276,15 +332,19 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
         switch (ins->opcode) {
             case OP_VAR: {
-                if (vm_crear_var(ins->sval, ins->arg1) < 0) return;
+                if (vm_crear_var(ins->sval, ins->arg1) < 0) return 1;
                 break;
             }
+
+            case OP_POINT:
+                /* En Fase 3, las declaraciones POINT no cambian estado runtime. */
+                break;
 
             case OP_ASSIGN: {
                 int idx_dest = vm_buscar_var(ins->sval);
                 if (idx_dest < 0) {
                     fprintf(stderr, "VM ERROR: destino '%s' no existe\n", ins->sval);
-                    return;
+                    return 1;
                 }
 
                 int lhs = vm_obtener_valor_operando(ins, 1);
@@ -317,13 +377,66 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 pos_x = 0;
                 pos_y = 0;
                 pos_z = 0;
-                printf("[VM] HOME -> posicion (0,0,0)\n");
+                vm_imprimir_posicion("HOME");
+                break;
+
+            case OP_MOVE:
+                if (!vm_validar_objetivo_movimiento(ins->arg1, ins->arg2, ins->arg3, "MOVE")) {
+                    return 1;
+                }
+                vm_trazar_hacia("MOVE_LIN", ins->arg1, ins->arg2, ins->arg3,
+                               vm_calcular_pasos_movimiento());
+                vm_imprimir_posicion("MOVE");
+                vm_imprimir_stub_angulos(pos_x, pos_y);
+                break;
+
+            case OP_MOVEJ:
+                if (!vm_validar_objetivo_movimiento(ins->arg1, ins->arg2, ins->arg3, "MOVEJ")) {
+                    return 1;
+                }
+                printf("[VM] MOVEJ: trayectoria articular (stub)\n");
+
+                {
+                    int pasos = vm_calcular_pasos_movimiento();
+                    int z_segura = ((pos_z > ins->arg3) ? pos_z : ins->arg3) + VM_APPROACH_CLEARANCE;
+
+                    vm_trazar_hacia("MOVEJ_SEG1", pos_x, pos_y, z_segura, pasos / 2);
+                    vm_trazar_hacia("MOVEJ_SEG2", ins->arg1, ins->arg2, z_segura, pasos);
+                    vm_trazar_hacia("MOVEJ_SEG3", ins->arg1, ins->arg2, ins->arg3, pasos / 2);
+                }
+
+                vm_imprimir_posicion("MOVEJ");
+                vm_imprimir_stub_angulos(pos_x, pos_y);
+                break;
+
+            case OP_APPROACH:
+                if (!vm_validar_objetivo_movimiento(ins->arg1, ins->arg2, ins->arg3, "APPROACH")) {
+                    return 1;
+                }
+                /* Aproximacion en dos etapas: altura segura y descenso al objetivo. */
+                pos_x = ins->arg1;
+                pos_y = ins->arg2;
+                pos_z = (pos_z > ins->arg3 + VM_APPROACH_CLEARANCE)
+                            ? pos_z
+                            : (ins->arg3 + VM_APPROACH_CLEARANCE);
+                vm_imprimir_posicion("APPROACH_SAFE");
+
+                pos_x = ins->arg1;
+                pos_y = ins->arg2;
+                pos_z = ins->arg3;
+                vm_imprimir_posicion("APPROACH");
+                vm_imprimir_stub_angulos(pos_x, pos_y);
+                break;
+
+            case OP_DEPART:
+                pos_z += ins->arg1;
+                vm_imprimir_posicion("DEPART");
                 break;
 
             case OP_SPEED:
                 if (ins->arg1 < 0 || ins->arg1 > 100) {
                     fprintf(stderr, "VM ERROR: SPEED fuera de rango: %d\n", ins->arg1);
-                    return;
+                    return 1;
                 }
                 velocidad_actual = ins->arg1;
                 printf("[VM] SPEED = %d%%\n", velocidad_actual);
@@ -332,7 +445,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
             case OP_WAIT:
                 if (ins->arg1 <= 0) {
                     fprintf(stderr, "VM ERROR: WAIT invalido: %d\n", ins->arg1);
-                    return;
+                    return 1;
                 }
                 printf("[VM] WAIT %d s\n", ins->arg1);
                 Sleep((DWORD)ins->arg1 * 1000);
@@ -340,12 +453,12 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
             case OP_WHILE: {
                 int cond = 0;
-                if (!vm_evaluar_condicion(ins, &cond)) return;
+                if (!vm_evaluar_condicion(ins, &cond)) return 1;
                 if (!cond) {
                     int fin = jump_end_while[pc];
                     if (fin < 0) {
                         fprintf(stderr, "VM ERROR: WHILE sin END_WHILE en PC=%d\n", pc);
-                        return;
+                        return 1;
                     }
                     pc = fin + 1;
                     continue;
@@ -357,7 +470,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 int ini = jump_back_while[pc];
                 if (ini < 0) {
                     fprintf(stderr, "VM ERROR: END_WHILE sin WHILE en PC=%d\n", pc);
-                    return;
+                    return 1;
                 }
                 pc = ini;
                 continue;
@@ -365,12 +478,12 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
             case OP_IF: {
                 int cond = 0;
-                if (!vm_evaluar_condicion(ins, &cond)) return;
+                if (!vm_evaluar_condicion(ins, &cond)) return 1;
                 if (!cond) {
                     int dest = jump_if_false[pc];
                     if (dest < 0 || dest > longitud) {
                         fprintf(stderr, "VM ERROR: IF sin destino de salto en PC=%d\n", pc);
-                        return;
+                        return 1;
                     }
                     pc = dest;
                     continue;
@@ -382,7 +495,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 int dest = jump_else_end[pc];
                 if (dest < 0 || dest > longitud) {
                     fprintf(stderr, "VM ERROR: ELSE sin END_IF en PC=%d\n", pc);
-                    return;
+                    return 1;
                 }
                 pc = dest;
                 continue;
@@ -399,7 +512,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                     int fin = jump_end_repeat[pc];
                     if (fin < 0) {
                         fprintf(stderr, "VM ERROR: REPEAT sin END_REPEAT en PC=%d\n", pc);
-                        return;
+                        return 1;
                     }
                     repeat_restante[pc] = -1;
                     pc = fin + 1;
@@ -412,7 +525,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
                 int ini = jump_back_repeat[pc];
                 if (ini < 0) {
                     fprintf(stderr, "VM ERROR: END_REPEAT sin REPEAT en PC=%d\n", pc);
-                    return;
+                    return 1;
                 }
                 repeat_restante[ini]--;
                 if (repeat_restante[ini] > 0) {
@@ -425,7 +538,7 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
 
             case OP_HALT:
                 printf("[VM] HALT\n");
-                return;
+                return 0;
 
             default:
                 printf("[VM] OP no implementado aun: %s\n", opcode_a_texto(ins->opcode));
@@ -436,4 +549,5 @@ void vm_ejecutar(Instruccion* programa, int longitud, int traza) {
     }
 
     fprintf(stderr, "VM ERROR: PC fuera de rango (%d)\n", pc);
+    return 1;
 }

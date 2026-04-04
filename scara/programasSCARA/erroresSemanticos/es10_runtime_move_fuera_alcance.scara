@@ -1,0 +1,4 @@
+PROGRAM runtime_fuera
+MOVE 500 0 10
+PRINT "no deberia llegar"
+END

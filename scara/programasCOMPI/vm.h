@@ -3,6 +3,6 @@
 
 #include "parser.h"
 
-void vm_ejecutar(Instruccion* programa, int longitud, int traza);
+int vm_ejecutar(Instruccion* programa, int longitud, int traza);
 
 #endif

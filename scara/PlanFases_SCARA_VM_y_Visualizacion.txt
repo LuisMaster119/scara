@@ -650,6 +650,21 @@ Futuro F2 - Navegacion avanzada de simbolos
 - "Ir a siguiente uso" y "Ir a uso previo" con atajos dedicados.
 - Criterio de cierre:
   - transicion fluida entre definicion, referencias y errores.
+- Estado actual (2026-04-05): CIERRE FORMAL COMPLETADO.
+- Avance implementado en esta iteracion:
+  - lista de referencias seleccionable con salto por doble click/Enter,
+  - panel de Problemas con seleccion + salto por doble click/Enter,
+  - atajos dedicados para uso siguiente/previo (Ctrl+Alt+Down/Up),
+  - navegacion secuencial de problemas con F8/Shift+F8,
+  - botones Prev/Next en panel Problemas,
+  - seleccion estable de item de problema al cambiar filtros/orden,
+  - sincronizacion automatica de Referencias al saltar desde Problemas,
+  - sincronizacion de Referencias al resolver "Ir a definicion",
+  - accion manual "Sincronizar refs con contexto" (Ctrl+Alt+R),
+  - barra de Referencias enriquecida con origen del salto,
+  - barra de Referencias con indice activo (actual/total),
+  - feedback en consola para saltos de referencias/problemas,
+  - navegacion circular de referencias unificada en atajos/menu/panel.
 
 Futuro F3 - Mejora del panel Problemas
 - Agrupacion opcional por archivo.
@@ -676,11 +691,10 @@ Futuro F6 - QA y automatizacion
   - cada bloque nuevo valida build + arranque + flujo minimo.
 
 Prioridad recomendada de ejecucion:
-1) Futuro F2
-2) Futuro F5
-3) Futuro F4
-4) Futuro F3
-5) Futuro F6
+1) Futuro F5
+2) Futuro F4
+3) Futuro F3
+4) Futuro F6
 
 ================================================================
 FIN

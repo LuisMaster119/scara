@@ -60,6 +60,7 @@ struct EditorUiState {
     std::string refs_symbol;
     std::vector<int> refs_hits;
     int refs_index = -1;
+    std::string refs_origin = "manual";
     bool show_symbols = true;
     std::string symbol_filter;
     bool show_symbol_info = true;
@@ -74,6 +75,8 @@ struct DiagnosticsFilterState {
 struct ProblemsPanelState {
     std::string search_query;
     int sort_mode = 0;  // 0=archivo/linea, 1=severidad, 2=mensaje
+    int selected_index = -1;
+    std::string selected_signature;
 };
 
 struct CursorCaptureData {
@@ -82,6 +85,16 @@ struct CursorCaptureData {
 
 static bool is_word_char(char c);
 static std::string to_upper_copy(std::string s);
+static bool open_or_activate_tab(const std::string& raw_path,
+                                 std::vector<OpenFileTab>& tabs,
+                                 int& active_tab,
+                                 std::string& breadcrumb,
+                                 std::vector<std::string>& console_lines);
+static std::vector<int> find_symbol_usages_offsets(const std::string& text, const std::string& symbol);
+static bool diag_visible(const DiagnosticItem& d, const DiagnosticsFilterState& f);
+static bool diag_matches_search(const DiagnosticItem& d, const std::string& query);
+static bool diag_less(const DiagnosticItem& a, const DiagnosticItem& b, int sort_mode);
+static std::string file_name_from_path(const std::string& path);
 
 static bool is_ident_start(char c) {
     return (c == '_') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
@@ -303,6 +316,148 @@ static void set_tab_focus_line(OpenFileTab& tab, int line) {
     if (line <= 0) return;
     tab.focus_line = line;
     tab.syntax_scroll_line = line;
+}
+
+static void jump_to_reference_hit(OpenFileTab& tab,
+                                  const std::vector<int>& refs_hits,
+                                  int refs_index) {
+    if (refs_index < 0 || refs_index >= static_cast<int>(refs_hits.size())) return;
+    set_tab_focus_line(tab, line_from_offset(tab.content, refs_hits[refs_index]));
+}
+
+static void jump_to_reference_with_feedback(OpenFileTab& tab,
+                                            EditorUiState& editor_ui,
+                                            int refs_index,
+                                            const char* origin,
+                                            std::vector<std::string>& console_lines) {
+    if (refs_index < 0 || refs_index >= static_cast<int>(editor_ui.refs_hits.size())) return;
+    editor_ui.show_refs = true;
+    editor_ui.refs_index = refs_index;
+    editor_ui.refs_origin = (origin && origin[0] != '\0') ? origin : "refs";
+    jump_to_reference_hit(tab, editor_ui.refs_hits, editor_ui.refs_index);
+
+    int total = static_cast<int>(editor_ui.refs_hits.size());
+    int line = line_from_offset(tab.content, editor_ui.refs_hits[editor_ui.refs_index]);
+    console_lines.push_back("[IDE] Ref " + std::to_string(editor_ui.refs_index + 1) + "/" +
+                            std::to_string(total) + " -> L" + std::to_string(line) +
+                            " ('" + editor_ui.refs_symbol + "', " + editor_ui.refs_origin + ")");
+}
+
+static int line_start_offset(const std::string& text, int line) {
+    if (line <= 1) return 0;
+    int current = 1;
+    for (int i = 0; i < static_cast<int>(text.size()); ++i) {
+        if (text[i] == '\n') {
+            current++;
+            if (current == line) return i + 1;
+        }
+    }
+    return static_cast<int>(text.size());
+}
+
+static std::string symbol_from_line(const std::string& text, int line) {
+    int start = line_start_offset(text, line);
+    int i = start;
+    const int n = static_cast<int>(text.size());
+    while (i < n && text[i] != '\n') {
+        if (!is_word_char(text[i])) {
+            i++;
+            continue;
+        }
+        int j = i;
+        while (j < n && is_word_char(text[j])) j++;
+        std::string token = text.substr(static_cast<size_t>(i), static_cast<size_t>(j - i));
+        std::string up = to_upper_copy(token);
+        if (!is_scara_keyword_upper(up)) {
+            return token;
+        }
+        i = j;
+    }
+    return "";
+}
+
+static int find_hit_index_on_line(const std::string& text,
+                                  const std::vector<int>& hits,
+                                  int line) {
+    for (int i = 0; i < static_cast<int>(hits.size()); ++i) {
+        if (line_from_offset(text, hits[i]) == line) return i;
+    }
+    return -1;
+}
+
+static void sync_refs_from_symbol(OpenFileTab& tab,
+                                  EditorUiState& editor_ui,
+                                  const std::string& symbol,
+                                  int preferred_line,
+                                  const char* origin) {
+    if (symbol.empty()) return;
+    editor_ui.show_refs = true;
+    editor_ui.refs_symbol = symbol;
+    editor_ui.refs_hits = find_symbol_usages_offsets(tab.content, editor_ui.refs_symbol);
+    editor_ui.refs_index = editor_ui.refs_hits.empty() ? -1 : 0;
+    editor_ui.refs_origin = (origin && origin[0] != '\0') ? origin : "manual";
+    if (preferred_line > 0 && !editor_ui.refs_hits.empty()) {
+        int hit_idx = find_hit_index_on_line(tab.content, editor_ui.refs_hits, preferred_line);
+        if (hit_idx >= 0) editor_ui.refs_index = hit_idx;
+    }
+}
+
+static void open_diagnostic_item(const DiagnosticItem& it,
+                                 std::vector<OpenFileTab>& tabs,
+                                 int& active_tab,
+                                 std::string& breadcrumb,
+                                 std::vector<std::string>& console_lines,
+                                 EditorUiState& editor_ui) {
+    if (open_or_activate_tab(it.file_path, tabs, active_tab, breadcrumb, console_lines)) {
+        if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size())) {
+            set_tab_focus_line(tabs[active_tab], it.line);
+            std::string sym = symbol_from_line(tabs[active_tab].content, it.line);
+            sync_refs_from_symbol(tabs[active_tab], editor_ui, sym, it.line, "problemas");
+            console_lines.push_back("[IDE] Problema -> " + file_name_from_path(it.file_path) +
+                                    ":L" + std::to_string(it.line));
+        }
+    }
+}
+
+static std::string diagnostic_signature(const DiagnosticItem& d) {
+    return d.file_path + "|" + std::to_string(d.line) + "|" + d.kind + "|" + d.message;
+}
+
+static std::vector<DiagnosticItem> build_visible_diagnostics(const std::vector<DiagnosticItem>& diagnostics,
+                                                             const DiagnosticsFilterState& diagnostics_filter,
+                                                             const ProblemsPanelState& problems_ui) {
+    std::vector<DiagnosticItem> shown_diags;
+    shown_diags.reserve(diagnostics.size());
+    for (const DiagnosticItem& it : diagnostics) {
+        if (!diag_visible(it, diagnostics_filter)) continue;
+        if (!diag_matches_search(it, problems_ui.search_query)) continue;
+        shown_diags.push_back(it);
+    }
+    std::sort(shown_diags.begin(), shown_diags.end(), [&](const DiagnosticItem& a, const DiagnosticItem& b) {
+        return diag_less(a, b, problems_ui.sort_mode);
+    });
+    return shown_diags;
+}
+
+static void sync_problem_selection(ProblemsPanelState& problems_ui,
+                                   const std::vector<DiagnosticItem>& shown_diags) {
+    if (shown_diags.empty()) {
+        problems_ui.selected_index = -1;
+        problems_ui.selected_signature.clear();
+        return;
+    }
+    if (!problems_ui.selected_signature.empty()) {
+        for (int i = 0; i < static_cast<int>(shown_diags.size()); ++i) {
+            if (diagnostic_signature(shown_diags[i]) == problems_ui.selected_signature) {
+                problems_ui.selected_index = i;
+                return;
+            }
+        }
+    }
+    if (problems_ui.selected_index < 0 || problems_ui.selected_index >= static_cast<int>(shown_diags.size())) {
+        problems_ui.selected_index = 0;
+    }
+    problems_ui.selected_signature = diagnostic_signature(shown_diags[problems_ui.selected_index]);
 }
 
 static void rebuild_syntax_cache(OpenFileTab& tab) {
@@ -1102,7 +1257,10 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         const bool ctrl_down = (io.KeyCtrl || io.KeySuper);
+        const bool alt_down = io.KeyAlt;
         const bool shift_down = io.KeyShift;
+        std::vector<DiagnosticItem> hotkey_diags = build_visible_diagnostics(diagnostics, diagnostics_filter, problems_ui);
+        sync_problem_selection(problems_ui, hotkey_diags);
         if (ctrl_down && shift_down && ImGui::IsKeyPressed(ImGuiKey_O, false)) {
             editor_ui.show_symbols = !editor_ui.show_symbols;
         } else if (ctrl_down && ImGui::IsKeyPressed(ImGuiKey_O, false)) {
@@ -1125,6 +1283,7 @@ int main(int, char**) {
         }
         if (shift_down && ImGui::IsKeyPressed(ImGuiKey_F12, false)) {
             editor_ui.show_refs = true;
+            editor_ui.refs_origin = "shift+f12";
             if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size())) {
                 editor_ui.refs_symbol = word_at_cursor(tabs[active_tab].content, editor_ui.cursor_pos);
                 editor_ui.refs_hits = find_symbol_usages_offsets(tabs[active_tab].content, editor_ui.refs_symbol);
@@ -1149,6 +1308,35 @@ int main(int, char**) {
                     set_tab_focus_line(tabs[active_tab], line_from_offset(tabs[active_tab].content, editor_ui.find_hits[editor_ui.find_index]));
                 }
             }
+        }
+        if (ctrl_down && alt_down && ImGui::IsKeyPressed(ImGuiKey_DownArrow, false)) {
+            if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size()) && !editor_ui.refs_hits.empty()) {
+                int next_idx = (editor_ui.refs_index + 1) % static_cast<int>(editor_ui.refs_hits.size());
+                jump_to_reference_with_feedback(tabs[active_tab], editor_ui, next_idx, "uso siguiente", console_lines);
+            }
+        }
+        if (ctrl_down && alt_down && ImGui::IsKeyPressed(ImGuiKey_UpArrow, false)) {
+            if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size()) && !editor_ui.refs_hits.empty()) {
+                int prev_idx = (editor_ui.refs_index - 1 + static_cast<int>(editor_ui.refs_hits.size())) % static_cast<int>(editor_ui.refs_hits.size());
+                jump_to_reference_with_feedback(tabs[active_tab], editor_ui, prev_idx, "uso previo", console_lines);
+            }
+        }
+        if (ctrl_down && alt_down && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+            if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size())) {
+                int target_line = tabs[active_tab].focus_line > 0 ? tabs[active_tab].focus_line : editor_ui.line;
+                std::string sym = word_at_cursor(tabs[active_tab].content, editor_ui.cursor_pos);
+                if (sym.empty()) sym = symbol_from_line(tabs[active_tab].content, target_line);
+                sync_refs_from_symbol(tabs[active_tab], editor_ui, sym, target_line, "manual" );
+            }
+        }
+        if (!ImGui::IsAnyItemActive() && ImGui::IsKeyPressed(ImGuiKey_F8, false) && !hotkey_diags.empty()) {
+            if (shift_down) {
+                problems_ui.selected_index = (problems_ui.selected_index - 1 + static_cast<int>(hotkey_diags.size())) % static_cast<int>(hotkey_diags.size());
+            } else {
+                problems_ui.selected_index = (problems_ui.selected_index + 1) % static_cast<int>(hotkey_diags.size());
+            }
+            problems_ui.selected_signature = diagnostic_signature(hotkey_diags[problems_ui.selected_index]);
+                open_diagnostic_item(hotkey_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
         }
 
         ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1216,14 +1404,29 @@ int main(int, char**) {
                 }
                 if (ImGui::MenuItem("Buscar referencias", "Shift+F12", false, active_tab >= 0 && active_tab < static_cast<int>(tabs.size()))) {
                     editor_ui.show_refs = true;
+                    editor_ui.refs_origin = "menu refs";
                     if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size())) {
                         editor_ui.refs_symbol = word_at_cursor(tabs[active_tab].content, editor_ui.cursor_pos);
                         editor_ui.refs_hits = find_symbol_usages_offsets(tabs[active_tab].content, editor_ui.refs_symbol);
                         editor_ui.refs_index = editor_ui.refs_hits.empty() ? -1 : 0;
                         if (editor_ui.refs_index >= 0) {
-                            set_tab_focus_line(tabs[active_tab], line_from_offset(tabs[active_tab].content, editor_ui.refs_hits[editor_ui.refs_index]));
+                            jump_to_reference_hit(tabs[active_tab], editor_ui.refs_hits, editor_ui.refs_index);
                         }
                     }
+                }
+                if (ImGui::MenuItem("Uso siguiente", "Ctrl+Alt+Down", false, active_tab >= 0 && active_tab < static_cast<int>(tabs.size()) && !editor_ui.refs_hits.empty())) {
+                    int next_idx = (editor_ui.refs_index + 1) % static_cast<int>(editor_ui.refs_hits.size());
+                    jump_to_reference_with_feedback(tabs[active_tab], editor_ui, next_idx, "uso siguiente", console_lines);
+                }
+                if (ImGui::MenuItem("Uso previo", "Ctrl+Alt+Up", false, active_tab >= 0 && active_tab < static_cast<int>(tabs.size()) && !editor_ui.refs_hits.empty())) {
+                    int prev_idx = (editor_ui.refs_index - 1 + static_cast<int>(editor_ui.refs_hits.size())) % static_cast<int>(editor_ui.refs_hits.size());
+                    jump_to_reference_with_feedback(tabs[active_tab], editor_ui, prev_idx, "uso previo", console_lines);
+                }
+                if (ImGui::MenuItem("Sincronizar refs con contexto", "Ctrl+Alt+R", false, active_tab >= 0 && active_tab < static_cast<int>(tabs.size()))) {
+                    int target_line = tabs[active_tab].focus_line > 0 ? tabs[active_tab].focus_line : editor_ui.line;
+                    std::string sym = word_at_cursor(tabs[active_tab].content, editor_ui.cursor_pos);
+                    if (sym.empty()) sym = symbol_from_line(tabs[active_tab].content, target_line);
+                    sync_refs_from_symbol(tabs[active_tab], editor_ui, sym, target_line, "manual");
                 }
                 if (ImGui::MenuItem("Panel de simbolos", "Ctrl+Shift+O", editor_ui.show_symbols, true)) {
                     editor_ui.show_symbols = !editor_ui.show_symbols;
@@ -1241,6 +1444,16 @@ int main(int, char**) {
                             set_tab_focus_line(tabs[active_tab], line_from_offset(tabs[active_tab].content, editor_ui.find_hits[editor_ui.find_index]));
                         }
                     }
+                }
+                if (ImGui::MenuItem("Problema siguiente", "F8", false, !hotkey_diags.empty())) {
+                    problems_ui.selected_index = (problems_ui.selected_index + 1) % static_cast<int>(hotkey_diags.size());
+                    problems_ui.selected_signature = diagnostic_signature(hotkey_diags[problems_ui.selected_index]);
+                    open_diagnostic_item(hotkey_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
+                }
+                if (ImGui::MenuItem("Problema previo", "Shift+F8", false, !hotkey_diags.empty())) {
+                    problems_ui.selected_index = (problems_ui.selected_index - 1 + static_cast<int>(hotkey_diags.size())) % static_cast<int>(hotkey_diags.size());
+                    problems_ui.selected_signature = diagnostic_signature(hotkey_diags[problems_ui.selected_index]);
+                    open_diagnostic_item(hotkey_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
                 }
                 ImGui::EndMenu();
             }
@@ -1467,6 +1680,7 @@ int main(int, char**) {
                             std::string def_kind;
                             if (find_symbol_definition_line(tabs[i].content, editor_ui.goto_def_symbol, def_line, def_kind)) {
                                 set_tab_focus_line(tabs[i], def_line);
+                                sync_refs_from_symbol(tabs[i], editor_ui, editor_ui.goto_def_symbol, def_line, "definicion");
                                 console_lines.push_back("[IDE] Definicion " + def_kind + " de '" + editor_ui.goto_def_symbol + "' en linea " + std::to_string(def_line));
                             } else {
                                 console_lines.push_back("[IDE] No se encontro definicion local para: " + editor_ui.goto_def_symbol);
@@ -1488,25 +1702,50 @@ int main(int, char**) {
                         if (ImGui::Button("Buscar##refs") || changed_refs) {
                             editor_ui.refs_hits = find_symbol_usages_offsets(tabs[i].content, editor_ui.refs_symbol);
                             editor_ui.refs_index = editor_ui.refs_hits.empty() ? -1 : 0;
+                            editor_ui.refs_origin = "refs bar";
                             if (editor_ui.refs_index >= 0) {
-                                set_tab_focus_line(tabs[i], line_from_offset(tabs[i].content, editor_ui.refs_hits[editor_ui.refs_index]));
+                                jump_to_reference_hit(tabs[i], editor_ui.refs_hits, editor_ui.refs_index);
                             }
                         }
                         ImGui::SameLine();
                         if (ImGui::Button("Prev##refs") && !editor_ui.refs_hits.empty()) {
-                            editor_ui.refs_index = (editor_ui.refs_index - 1 + static_cast<int>(editor_ui.refs_hits.size())) % static_cast<int>(editor_ui.refs_hits.size());
-                            set_tab_focus_line(tabs[i], line_from_offset(tabs[i].content, editor_ui.refs_hits[editor_ui.refs_index]));
+                            int prev_idx = (editor_ui.refs_index - 1 + static_cast<int>(editor_ui.refs_hits.size())) % static_cast<int>(editor_ui.refs_hits.size());
+                            jump_to_reference_with_feedback(tabs[i], editor_ui, prev_idx, "uso previo", console_lines);
                         }
                         ImGui::SameLine();
                         if (ImGui::Button("Next##refs") && !editor_ui.refs_hits.empty()) {
-                            editor_ui.refs_index = (editor_ui.refs_index + 1) % static_cast<int>(editor_ui.refs_hits.size());
-                            set_tab_focus_line(tabs[i], line_from_offset(tabs[i].content, editor_ui.refs_hits[editor_ui.refs_index]));
+                            int next_idx = (editor_ui.refs_index + 1) % static_cast<int>(editor_ui.refs_hits.size());
+                            jump_to_reference_with_feedback(tabs[i], editor_ui, next_idx, "uso siguiente", console_lines);
                         }
                         ImGui::SameLine();
-                        ImGui::Text("%d refs", static_cast<int>(editor_ui.refs_hits.size()));
+                        int refs_total = static_cast<int>(editor_ui.refs_hits.size());
+                        int refs_pos = editor_ui.refs_index >= 0 ? (editor_ui.refs_index + 1) : 0;
+                        ImGui::Text("%d refs | %d/%d | origen: %s", refs_total, refs_pos, refs_total, editor_ui.refs_origin.c_str());
                         ImGui::SameLine();
                         if (ImGui::Button("Cerrar##refs")) {
                             editor_ui.show_refs = false;
+                        }
+                        ImGui::EndChild();
+
+                        ImGui::BeginChild("RefsList", ImVec2(0, 92), true);
+                        for (int r = 0; r < static_cast<int>(editor_ui.refs_hits.size()); ++r) {
+                            int line = line_from_offset(tabs[i].content, editor_ui.refs_hits[r]);
+                            std::string label = "L" + std::to_string(line) + "  uso #" + std::to_string(r + 1);
+                            bool selected_ref = (editor_ui.refs_index == r);
+                            if (ImGui::Selectable(label.c_str(), selected_ref)) {
+                                editor_ui.refs_index = r;
+                                editor_ui.refs_origin = "lista refs";
+                            }
+                            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+                                jump_to_reference_with_feedback(tabs[i], editor_ui, r, "lista refs", console_lines);
+                            }
+                        }
+                        if (editor_ui.refs_index >= static_cast<int>(editor_ui.refs_hits.size())) {
+                            editor_ui.refs_index = editor_ui.refs_hits.empty() ? -1 : 0;
+                        }
+                        if (editor_ui.refs_index >= 0 && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) &&
+                            ImGui::IsKeyPressed(ImGuiKey_Enter, false) && !ImGui::IsAnyItemActive()) {
+                            jump_to_reference_with_feedback(tabs[i], editor_ui, editor_ui.refs_index, "lista refs", console_lines);
                         }
                         ImGui::EndChild();
                     }
@@ -1606,19 +1845,13 @@ int main(int, char**) {
                 int count_error = 0;
                 int count_warn = 0;
                 int count_info = 0;
-                std::vector<DiagnosticItem> shown_diags;
                 for (const DiagnosticItem& it : diagnostics) {
                     if (it.kind == "Error") count_error++;
                     else if (it.kind == "Warning") count_warn++;
                     else if (it.kind == "Info") count_info++;
-                    if (!diag_visible(it, diagnostics_filter)) continue;
-                    if (!diag_matches_search(it, problems_ui.search_query)) continue;
-                    shown_diags.push_back(it);
                 }
-
-                std::sort(shown_diags.begin(), shown_diags.end(), [&](const DiagnosticItem& a, const DiagnosticItem& b) {
-                    return diag_less(a, b, problems_ui.sort_mode);
-                });
+                std::vector<DiagnosticItem> shown_diags = build_visible_diagnostics(diagnostics, diagnostics_filter, problems_ui);
+                sync_problem_selection(problems_ui, shown_diags);
 
                 ImGui::SameLine();
                 ImGui::Text("Items: %d/%d", static_cast<int>(shown_diags.size()), static_cast<int>(diagnostics.size()));
@@ -1640,6 +1873,18 @@ int main(int, char**) {
                 const char* sort_items[] = { "Archivo/Linea", "Severidad", "Mensaje" };
                 ImGui::SetNextItemWidth(180.0f);
                 ImGui::Combo("##problems_sort", &problems_ui.sort_mode, sort_items, IM_ARRAYSIZE(sort_items));
+                ImGui::SameLine();
+                if (ImGui::Button("Prev problema") && !shown_diags.empty()) {
+                    problems_ui.selected_index = (problems_ui.selected_index - 1 + static_cast<int>(shown_diags.size())) % static_cast<int>(shown_diags.size());
+                    problems_ui.selected_signature = diagnostic_signature(shown_diags[problems_ui.selected_index]);
+                    open_diagnostic_item(shown_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Next problema") && !shown_diags.empty()) {
+                    problems_ui.selected_index = (problems_ui.selected_index + 1) % static_cast<int>(shown_diags.size());
+                    problems_ui.selected_signature = diagnostic_signature(shown_diags[problems_ui.selected_index]);
+                    open_diagnostic_item(shown_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
+                }
                 ImGui::BeginChild("DiagnosticsPanel", ImVec2(0, 110), true);
                 for (int d = 0; d < static_cast<int>(shown_diags.size()); ++d) {
                     const DiagnosticItem& it = shown_diags[d];
@@ -1651,14 +1896,22 @@ int main(int, char**) {
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.18f, 0.48f, 0.82f, 1.0f));
                     }
-                    if (ImGui::Selectable(label.c_str(), false)) {
-                        if (open_or_activate_tab(it.file_path, tabs, active_tab, breadcrumb, console_lines)) {
-                            if (active_tab >= 0 && active_tab < static_cast<int>(tabs.size())) {
-                                set_tab_focus_line(tabs[active_tab], it.line);
-                            }
-                        }
+                    bool selected_problem = (problems_ui.selected_index == d);
+                    if (ImGui::Selectable(label.c_str(), selected_problem)) {
+                        problems_ui.selected_index = d;
+                        problems_ui.selected_signature = diagnostic_signature(it);
+                    }
+                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+                        problems_ui.selected_index = d;
+                        problems_ui.selected_signature = diagnostic_signature(it);
+                        open_diagnostic_item(it, tabs, active_tab, breadcrumb, console_lines, editor_ui);
                     }
                     ImGui::PopStyleColor();
+                }
+                if (problems_ui.selected_index >= 0 && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) &&
+                    ImGui::IsKeyPressed(ImGuiKey_Enter, false) && !ImGui::IsAnyItemActive()) {
+                    problems_ui.selected_signature = diagnostic_signature(shown_diags[problems_ui.selected_index]);
+                    open_diagnostic_item(shown_diags[problems_ui.selected_index], tabs, active_tab, breadcrumb, console_lines, editor_ui);
                 }
                 ImGui::EndChild();
             }

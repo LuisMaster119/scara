@@ -28,12 +28,12 @@ ACTUALIZACION IDE SCARA (2026-04-04):
 
 ROADMAP IDE (siguientes bloques):
 - B1: resaltado sintactico real en editor principal. [CERRADO 2026-04-05]
-- B2: navegacion avanzada por referencias/problemas (doble click/Enter).
+- B2: navegacion avanzada por referencias/problemas (doble click/Enter). [CERRADO 2026-04-05]
 - B3: integracion visual embebida real del robot en el panel visual.
 - B4: restauracion de sesion (tabs, tab activo, cursor/scroll).
 - B5: automatizacion de regresion para IDE + compilador.
 
-Siguiente bloque recomendado: B2.
+Siguiente bloque recomendado: B3.
 
 
 ================================================================

@@ -10,7 +10,30 @@ ACTUALIZACION DE ESTADO (2026-04-03):
 - Fase 3 cerrada y validada.
 - Fase 4 cerrada y validada (IK C/ASM consistente).
 - Fase 5 cerrada formalmente y validada (visualizacion SDL2 + controles).
-- Siguiente hito: pruebas finales integrales del proyecto.
+- Pruebas finales integrales cerradas y validadas (27 OK, 0 FAIL).
+
+ACTUALIZACION IDE SCARA (2026-04-04):
+- IDE SDL2 + Dear ImGui operativo como ejecutable separado:
+  ide/scara_ide.exe.
+- Bloques implementados y validados:
+  1) Layout base tipo IDE (menu, breadcrumb, paneles, tabs, consola).
+  2) Abrir/guardar/ejecutar archivo activo con captura de salida.
+  3) Explorador recursivo con filtros y dirty markers.
+  4) Buscar, F3, ir a linea, autocompletado basico y status bar.
+  5) Panel de problemas con severidad, filtro de texto y orden.
+  6) Navegacion semantica local: F12, Shift+F12, simbolos locales.
+  7) Barra de info de simbolo bajo cursor (tipo/def/usos).
+  8) Persistencia de estado UI entre sesiones.
+- Estado actual: build estable y arranque validado en smoke tests.
+
+ROADMAP IDE (siguientes bloques):
+- B1: resaltado sintactico real en editor principal. [CERRADO 2026-04-05]
+- B2: navegacion avanzada por referencias/problemas (doble click/Enter).
+- B3: integracion visual embebida real del robot en el panel visual.
+- B4: restauracion de sesion (tabs, tab activo, cursor/scroll).
+- B5: automatizacion de regresion para IDE + compilador.
+
+Siguiente bloque recomendado: B2.
 
 
 ================================================================

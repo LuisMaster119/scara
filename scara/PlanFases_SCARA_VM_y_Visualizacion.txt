@@ -531,19 +531,18 @@ Control:
 [x] Fase 3 movimientos con estado cerrada y validada
 [x] Fase 4 cinematica inversa real cerrada y validada
 [x] Fase 5 visualizacion SDL2 + ASM cerrada y validada
-[ ] Pruebas finales integrales
+[x] Pruebas finales integrales cerradas y validadas
 
 
 ================================================================
 8. SIGUIENTE PASO RECOMENDADO INMEDIATO
 ================================================================
-Iniciar pruebas finales integrales del proyecto.
+Pruebas finales integrales del proyecto completadas.
 
 Objetivo inmediato:
-- Ejecutar bateria integral de correctos + errores (lexico/sintactico/
-  semantico/runtime) con verificacion de codigos de salida esperados.
-- Revalidar --ik-selftest para garantizar que C/ASM permanece consistente.
 - Consolidar reporte final de estado del compilador + VM + IK + visualizacion.
+- Dejar preparado paquete/entrega final del proyecto (codigo + documentacion).
+- Opcional: generar script de regresion automatica para futuras iteraciones.
 
 Validacion minima para pruebas finales integrales:
 - Casos correctos base (c1..c8) con EXIT=0.
@@ -554,6 +553,134 @@ Criterio de cierre del proyecto:
 - Pipeline completo estable: lexer + parser + VM + IK C/ASM + visualizacion.
 - Resultados coherentes y reproducibles en bateria completa.
 - Documentacion final actualizada con comandos y criterios de validacion.
+
+Acta de validacion final (2026-04-03):
+- Correctos c1..c8: 8/8 con EXIT=0.
+- Errores lexico/sintactico/semantico/runtime: 18/18 con EXIT=1.
+- IK selftest: total=1208, ok=1208, fail=0, EXIT=0.
+- Resumen consolidado: 27 verificaciones OK, 0 FAIL.
+
+
+================================================================
+9. SCARA IDE - HISTORIAL DE BLOQUES IMPLEMENTADOS
+================================================================
+Contexto:
+- Se decidio mantener dos ejecutables separados:
+  - programasCOMPI/scara.exe (compilador + VM + IK + visualizacion)
+  - ide/scara_ide.exe (IDE SDL2 + Dear ImGui)
+- El IDE no reemplaza el compilador: lo invoca como proceso externo
+  y consume su salida para consola y panel de problemas.
+
+Bloque IDE-0 - Cascaron inicial (layout base)
+- Host principal con menu bar y layout tipo IDE:
+  breadcrumb superior, panel lateral, tabs, editor, consola, panel visual.
+- Build separado del compilador principal.
+
+Bloque IDE-1 - Apertura/guardado/ejecucion
+- Apertura de archivo real con dialogo nativo Windows (GetOpenFileNameA).
+- Guardado de archivo activo a disco.
+- Ejecucion de archivo activo via scara.exe y captura de salida.
+
+Bloque IDE-2 - Explorador y estado de archivos
+- Explorador lateral recursivo con filtros por extension.
+- Busqueda de archivos por nombre.
+- Indicador de cambios sin guardar (*) en tabs y explorador.
+
+Bloque IDE-3 - Productividad de edicion
+- Buscar en archivo (Ctrl+F) con coincidencias + Prev/Next + F3.
+- Ir a linea (Ctrl+G).
+- Barra de estado con linea/columna y estado guardado.
+- Autocompletado basico de keywords SCARA por prefijo.
+
+Bloque IDE-4 - Diagnosticos y problemas
+- Parseo de diagnosticos desde salida de consola (linea N).
+- Panel clicable para abrir archivo y enfocar linea.
+- Clasificacion por severidad (Error/Warning/Info).
+- Filtros E/W/I, filtro de texto y orden por archivo/linea,
+  severidad o mensaje.
+
+Bloque IDE-5 - Navegacion semantica local
+- Ir a definicion local (F12) para simbolos VAR/POINT.
+- Buscar referencias locales (Shift+F12) con navegacion Prev/Next.
+- Panel de simbolos locales con filtro y salto por clic.
+- Atajo Ctrl+Shift+O para mostrar/ocultar panel de simbolos.
+
+Bloque IDE-6 - Informacion semantica en cursor
+- Barra contextual bajo el editor con:
+  simbolo actual, tipo, linea de definicion y cantidad de usos.
+- Accion directa "Ir" a definicion.
+
+Bloque IDE-7 - Persistencia de estado UI
+- Archivo de configuracion local del IDE con restauracion en arranque.
+- Persistencia de paneles y filtros:
+  - visibilidad de paneles principales,
+  - filtros del explorador,
+  - estado de Problemas (E/W/I, texto, orden),
+  - estado/filtro de simbolos,
+  - visibilidad de barra de info semantica.
+
+Estado del IDE (actual):
+- Build OK y arranque estable en iteraciones recientes.
+- Flujo principal operativo:
+  abrir -> editar -> guardar -> ejecutar -> diagnosticar -> navegar.
+
+
+================================================================
+10. SCARA IDE - ROADMAP DE BLOQUES FUTUROS
+================================================================
+Objetivo del roadmap:
+- Completar capacidades de navegacion/diagnostico y preparar
+  integracion visual del robot dentro del IDE.
+
+Futuro F1 - Resaltado sintactico en editor principal
+- Llevar el coloreado del quick view al editor principal real.
+- Cobertura minima: keywords, comentarios, cadenas y numeros.
+- Criterio de cierre:
+  - legibilidad mejorada sin degradacion visible de rendimiento.
+- Estado actual (2026-04-05): CIERRE FORMAL COMPLETADO.
+- Cierre validado con:
+  - panel principal dividido (resaltado + edicion),
+  - sincronizacion de saltos (buscar/referencias/problemas) con foco visual,
+  - resaltado de linea de cursor y linea objetivo,
+  - cache de lineas por pestaña para reducir reprocesamiento por frame,
+  - build IDE en verde tras integracion.
+
+Futuro F2 - Navegacion avanzada de simbolos
+- Doble click/Enter en referencias y problemas para saltos rapidos.
+- "Ir a siguiente uso" y "Ir a uso previo" con atajos dedicados.
+- Criterio de cierre:
+  - transicion fluida entre definicion, referencias y errores.
+
+Futuro F3 - Mejora del panel Problemas
+- Agrupacion opcional por archivo.
+- Acciones rapidas (copiar mensaje, limpiar por archivo, reintentar parseo).
+- Criterio de cierre:
+  - panel util como equivalente de "Problems" en flujo diario.
+
+Futuro F4 - Persistencia ampliada
+- Recordar ultima sesion de archivos abiertos y tab activo.
+- Restaurar posicion de scroll/cursor por archivo (MVP).
+- Criterio de cierre:
+  - reabrir IDE y continuar trabajo donde se quedo.
+
+Futuro F5 - Integracion visual embebida real
+- Sustituir placeholder visual por panel embebido de visualizacion.
+- Sincronizar timeline VM con reproduccion visual desde IDE.
+- Criterio de cierre:
+  - ejecutar desde IDE y ver animacion integrada sin ventana separada.
+
+Futuro F6 - QA y automatizacion
+- Script de smoke test IDE + compilador.
+- Checklist de regresion para features de edicion/navegacion.
+- Criterio de cierre:
+  - cada bloque nuevo valida build + arranque + flujo minimo.
+
+Prioridad recomendada de ejecucion:
+1) Futuro F2
+2) Futuro F5
+3) Futuro F4
+4) Futuro F3
+5) Futuro F6
 
 ================================================================
 FIN

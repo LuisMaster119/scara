@@ -10,8 +10,8 @@
 #include "vm.h"
 #include "cinematica.h"
 
-#define VIS_W 1200
-#define VIS_H 800
+#define VIS_W 960
+#define VIS_H 640
 
 typedef struct {
     double zoom;

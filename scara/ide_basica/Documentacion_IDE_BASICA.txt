@@ -1,0 +1,187 @@
+IDE BASICA SCARA (RUTA A)
+
+Objetivo
+- Crear una IDE escolar minima y estable, separada de la IDE avanzada.
+
+Carpeta
+- Esta version vive en: scara/ide_basica
+
+Alcance inicial incluido
+1) Editor de texto central (multilinea).
+2) Panel derecho desplegable (por defecto visible) con boton para seleccionar carpeta.
+3) Consola inferior integrada con limite de lineas para evitar saturacion.
+4) Boton Ejecutar que corre programasCOMPI/scara.exe y permite abrir ventana de graficacion.
+5) Apertura de archivo .scara existente desde barra superior o panel derecho.
+6) Ejecucion en segundo plano (no bloquea la UI) con salida incremental en consola.
+7) Guardar, Guardar como y atajo Ctrl+S.
+8) Indicador de estado de edicion: Guardado / Modificado.
+9) Confirmacion al cerrar si hay cambios sin guardar.
+10) Opcion "Auto-guardar al ejecutar" (ON/OFF).
+11) Boton "Detener" para cancelar la corrida en curso.
+12) Filtros de consola: Todo / Errores / VM.
+13) Copiar consola y Exportar log .txt (respetando filtro activo).
+14) Busqueda en consola con navegacion Anterior/Siguiente.
+15) Atajos de busqueda en consola: F3 y Shift+F3.
+16) Resaltado de subcadena encontrada y boton "Limpiar busqueda".
+17) Opciones de busqueda: Case sensitive, Palabra completa y atajo Ctrl+F.
+18) Historial de busquedas recientes y boton "Repetir ultima".
+19) Persistencia de preferencias en archivo cfg.
+20) Ajuste de altura de consola y accion "Restaurar defaults".
+21) Barra de estado en vivo (archivo, filtro, coincidencias, visibles y estado cfg).
+22) Barra de estado por severidad (LISTO/EJECUTANDO/CON ERRORES/CON AVISOS).
+23) Contadores clicables en barra de estado (Err/Avisos/VM/Todo).
+24) Accesos rapidos de estado con foco automatico en consola.
+25) Estado explicito por codigo de salida y orden natural de archivos.
+
+Detalle de Auto-guardar al ejecutar
+- ON (recomendado): al pulsar Ejecutar, primero guarda el editor y luego corre scara.exe.
+- OFF (manual): ejecuta la ultima version guardada en disco.
+  Si hay cambios sin guardar, se muestra aviso en consola.
+  Si el archivo aun no existe en disco, pide guardar primero.
+
+Detalle de Detener ejecucion
+- El boton "Detener" se habilita solo cuando hay una corrida activa.
+- Al pulsarlo, la IDE envia una solicitud de detencion y fuerza cierre de scara.exe.
+- La consola muestra trazas de solicitud y cierre para seguimiento.
+
+Detalle de filtros de consola
+- Todo: muestra toda la salida.
+- Errores: muestra lineas con "ERROR" y su contexto diagnostico (Linea/codigo/caret).
+- VM: muestra solo lineas con etiqueta "[VM]".
+- La consola tambien muestra contador de lineas visibles segun el filtro activo.
+
+Detalle de copiar/exportar consola
+- Copiar consola: envia al portapapeles solo las lineas visibles del filtro activo.
+- Exportar .txt: guarda en archivo solo las lineas visibles del filtro activo.
+- Si no hay lineas visibles, la IDE muestra aviso en consola.
+
+Detalle de busqueda en consola
+- Campo "Buscar" para encontrar texto dentro de la consola visible (respeta filtro activo).
+- Botones "Anterior" y "Siguiente" con navegacion circular entre coincidencias.
+- Indicador de progreso: coincidencias totales y posicion actual.
+- Atajo F3: siguiente coincidencia.
+- Atajo Shift+F3: coincidencia anterior.
+- Atajo Ctrl+F: enfoca el campo de busqueda de consola.
+- Checkbox "Buscar en todo el log": incluye lineas fuera del filtro visual actual.
+- Checkbox "Case sensitive": diferencia mayusculas/minusculas.
+- Checkbox "Palabra completa": solo coincide cuando el termino aparece como palabra entera.
+- Resaltado visual de la subcadena encontrada dentro de cada linea coincidente.
+- Boton "Limpiar busqueda": reinicia consulta y navegacion de coincidencias.
+- Enter en el campo Buscar: guarda la consulta en historial reciente (maximo 5).
+- Boton "Repetir ultima": recupera inmediatamente la consulta mas reciente.
+- Botones "<Hist" y "Hist>": recorren el historial de busquedas sin reescribir texto.
+
+Detalle de persistencia cfg
+- La IDE guarda preferencias al cerrar en `scara_ide_basica.cfg` (misma carpeta del ejecutable).
+- Al iniciar, restaura automaticamente:
+  panel derecho, auto-guardar, filtro de consola,
+  consulta de busqueda, toggles de busqueda, historial reciente
+  y proporcion de altura de consola.
+
+Detalle de layout y defaults
+- Barra desplazadora "Consola %" (0-100): ajusta cuanto espacio ocupa la consola inferior.
+- Ese porcentaje queda persistido en cfg para la siguiente sesion.
+- Boton "Restaurar defaults": reinicia preferencias de panel, consola y busqueda.
+
+Detalle de barra de estado
+- Muestra archivo activo (o temporal), filtro de consola y metricas en vivo.
+- Incluye total de coincidencias de busqueda y lineas visibles actuales.
+- Indica si la sesion arranco con "CFG cargada" o "CFG default".
+- Muestra conteos en vivo: errores, avisos y lineas VM visibles.
+- Cambia de estado visual por severidad:
+  LISTO, EJECUTANDO, CON ERRORES o CON AVISOS.
+- Los contadores son clicables para aplicar filtros rapidos:
+  Err -> filtro Errores, VM -> filtro VM, Todo -> filtro Todo.
+- Avisos aplica vista general y precarga busqueda "AVISO" para inspeccion rapida.
+- Al usar estos accesos, la IDE enfoca la consola y salta al primer resultado relevante.
+- Si una corrida termina con codigo distinto de 0, el estado muestra "ERROR DE EJECUCION".
+
+Detalle de listado de archivos
+- El panel ahora ordena nombres con criterio natural (es1, es2, ... es10).
+
+Comportamiento de ejecucion
+- Si hay archivo activo abierto, al ejecutar se guarda sobre ese mismo archivo.
+- Si no hay archivo activo, se guarda en:
+  <carpeta_seleccionada>/programa_activo.scara
+- Luego se ejecuta:
+  ..\\programasCOMPI\\scara.exe --vis-keep-open <archivo>
+- La salida textual se captura y se muestra en la consola inferior.
+- La visualizacion SDL2 se abre desde scara.exe cuando aplica.
+
+Referencia rapida: botones e interacciones (IDE + compilador)
+
+Barra superior (flujo principal)
+- Seleccionar carpeta: define la carpeta de trabajo para listar archivos y guardar programa_activo.scara.
+- Abrir .scara: abre un archivo existente en el editor.
+- Guardar: guarda el archivo actual (o pide ruta si aun no existe).
+- Guardar como: guarda con nuevo nombre/ruta.
+- Panel derecho (checkbox): muestra/oculta el panel lateral.
+- Auto-guardar al ejecutar (checkbox):
+  - Activado: guarda antes de correr el compilador.
+  - Desactivado: ejecuta la ultima version ya guardada.
+- Consola % (barra 0-100): controla el espacio vertical de la consola inferior.
+- Restaurar defaults: reinicia preferencias de panel, filtro, busqueda y layout.
+- Ejecutar: lanza programasCOMPI/scara.exe con el archivo activo y muestra salida en consola.
+- Detener: intenta cortar una corrida en curso de scara.exe.
+
+Panel derecho
+- Abrir .scara##panel: acceso rapido para abrir archivo desde el lateral.
+- Seleccionar carpeta##panel: acceso rapido para cambiar carpeta.
+- Archivos de la carpeta: lista archivos ordenados de forma natural (es1, es2, ... es10).
+- Click en [SCARA] nombre.scara: abre ese archivo en el editor central.
+
+Consola (inspeccion de resultados del compilador/VM)
+- Limpiar consola: borra historial visible y deja una linea de control de la IDE.
+- Filtro Todo/Errores/VM:
+  - Todo: salida completa.
+  - Errores: errores + contexto diagnostico (linea/codigo/caret).
+  - VM: solo trazas [VM].
+- Copiar consola: copia al portapapeles solo lo visible por filtro.
+- Exportar .txt: exporta solo lo visible por filtro.
+
+Busqueda en consola
+- Campo Buscar: localiza texto en consola.
+- Enter: guarda la consulta en historial (hasta 5).
+- Limpiar busqueda: reinicia consulta e indice.
+- Repetir ultima: reutiliza la consulta mas reciente.
+- <Hist / Hist>: recorre historial guardado.
+- Buscar en todo el log (checkbox): busca aunque la linea no sea visible por filtro actual.
+- Case sensitive (checkbox): diferencia mayusculas/minusculas.
+- Palabra completa (checkbox): coincide solo termino completo.
+- Anterior / Siguiente: navega coincidencias.
+- F3 / Shift+F3: siguiente/anterior coincidencia.
+- Ctrl+F: enfoca el campo de busqueda.
+
+Barra de estado (atajos de diagnostico)
+- Estado: LISTO, EJECUTANDO, CON ERRORES, CON AVISOS o ERROR DE EJECUCION.
+- Err: aplica filtro de errores y enfoca consola.
+- Avisos: prepara vista para avisos.
+- VM: aplica filtro VM.
+- Todo: vuelve al filtro general.
+
+Interacciones del editor
+- Escribir en editor: marca archivo como Modificado.
+- Ctrl+S: guardado rapido.
+- Cierre con cambios: muestra confirmacion para guardar/salir/cancelar.
+
+Interaccion con el compilador (scara.exe)
+- La IDE no compila internamente: invoca scara.exe como proceso externo.
+- Captura stdout/stderr y los agrega en tiempo real a la consola.
+- Si scara.exe termina con codigo != 0, el estado final se marca como ERROR DE EJECUCION.
+
+Compilar en PowerShell
+1) Ir a scara/ide_basica
+2) Ejecutar: .\\build_ide_basica.ps1
+
+Ejecutar
+- .\\scara_ide_basica.exe
+
+Notas
+- Esta IDE no reemplaza la IDE avanzada existente.
+- Es una base limpia para crecer por microfases.
+
+Convencion de comentarios (microbloque actual)
+- Se agregaron comentarios explicativos en secciones clave del codigo.
+- Formato usado: NOMBRE: explicacion.
+- Nombres usados de forma alternada: LUIS, AARON, ALDA, AVILA.
+- Se incluyen descripciones breves de bucles y condicionales para facilitar el aprendizaje.

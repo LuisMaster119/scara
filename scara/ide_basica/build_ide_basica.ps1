@@ -1,6 +1,6 @@
 Set-Location $PSScriptRoot
 
-g++ .\src\ide_main.cpp `
+g++ .\src\ide_basica_main.cpp `
   ..\third_party\imgui\imgui.cpp `
   ..\third_party\imgui\imgui_draw.cpp `
   ..\third_party\imgui\imgui_tables.cpp `
@@ -12,11 +12,11 @@ g++ .\src\ide_main.cpp `
   -I..\third_party\imgui\backends `
   -IC:\msys64\mingw64\include\SDL2 `
   -LC:\msys64\mingw64\lib `
-  -o .\scara_ide.exe -lmingw32 -lSDL2main -lSDL2 -lcomdlg32
+  -o .\scara_ide_basica.exe -lmingw32 -lSDL2main -lSDL2 -lshell32 -lcomdlg32
 
 if ($LASTEXITCODE -ne 0) {
   Write-Output "Build failed."
   exit $LASTEXITCODE
 }
 
-Write-Output "Build OK: .\scara_ide.exe"
+Write-Output "Build OK: .\\scara_ide_basica.exe"

@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "simbolos.h"
 #include "errores.h"
+#include "cinematica.h"
 
 // --- Bytecode ---------------------------------------------
 
@@ -229,9 +230,34 @@ void parsear_movimiento(Parser* p) {
         emitir(op, s->val1, s->val2, s->val3, nombre);
 
     } else {
+        int linea_mov = p->actual.linea;
         int x = atoi(p->actual.valor); parser_consumir(p, TOK_NUMBER);
         int y = atoi(p->actual.valor); parser_consumir(p, TOK_NUMBER);
         int z = atoi(p->actual.valor); parser_consumir(p, TOK_NUMBER);
+
+        if (tipo == TOK_MOVE || tipo == TOK_MOVEJ || tipo == TOK_APPROACH) {
+            const char* nombre_op = (tipo == TOK_MOVE) ? "MOVE" :
+                                    (tipo == TOK_MOVEJ) ? "MOVEJ" : "APPROACH";
+            int L1 = 200, L2 = 150;
+
+            if (!cinematica_xy_en_alcance(x, y)) {
+                char mensaje[160];
+                sprintf(mensaje,
+                    "%s con coordenadas literales fuera de alcance XY (%d,%d), rango radial [%d,%d] mm",
+                    nombre_op, x, y, L1 - L2, L1 + L2);
+                error_reportar(ERR_SEMANTICO, linea_mov,
+                               nombre_op, mensaje);
+            }
+            if (z < 0) {
+                char mensaje[128];
+                sprintf(mensaje,
+                    "%s con Z literal invalida (%d), debe ser >= 0",
+                    nombre_op, z);
+                error_reportar(ERR_SEMANTICO, linea_mov,
+                               nombre_op, mensaje);
+            }
+        }
+
         Opcode op = (tipo == TOK_MOVE)     ? OP_MOVE :
                     (tipo == TOK_MOVEJ)    ? OP_MOVEJ : OP_APPROACH;
         emitir(op, x, y, z, NULL);

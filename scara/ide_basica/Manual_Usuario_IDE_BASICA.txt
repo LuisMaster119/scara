@@ -1,0 +1,199 @@
+MANUAL DE USUARIO - IDE BASICA SCARA
+
+Objetivo
+- Este manual explica como usar la IDE BASICA SCARA paso a paso.
+- Enfocado para flujo escolar: abrir, editar, guardar, ejecutar y revisar errores.
+
+Ruta
+- Carpeta de la IDE: scara/ide_basica
+- Ejecutable: scara_ide_basica.exe
+
+Requisitos previos
+1) Tener compilado scara.exe en:
+   scara/programasCOMPI/scara.exe
+2) Tener casos de prueba .scara (opcional, recomendado) en:
+   scara/programasSCARA/
+
+------------------------------------------------------------
+PASO 1 - Abrir la IDE
+------------------------------------------------------------
+1) Ir a la carpeta scara/ide_basica.
+2) Ejecutar:
+   .\scara_ide_basica.exe
+3) La ventana inicia maximizada.
+
+Resultado esperado:
+- Se abre la IDE con editor central, panel derecho y consola inferior.
+
+------------------------------------------------------------
+PASO 2 - Seleccionar carpeta de trabajo
+------------------------------------------------------------
+1) Click en boton "Seleccionar carpeta".
+2) Elegir la carpeta donde estan tus archivos .scara.
+
+Resultado esperado:
+- En consola aparece mensaje de carpeta seleccionada.
+- En panel derecho se actualiza listado de archivos.
+
+------------------------------------------------------------
+PASO 3 - Abrir un archivo .scara
+------------------------------------------------------------
+Opcion A (barra superior):
+1) Click en "Abrir .scara".
+2) Elegir archivo.
+
+Opcion B (panel derecho):
+1) En "Archivos de la carpeta", click en un item [SCARA] nombre.scara.
+
+Resultado esperado:
+- El archivo aparece en el editor.
+- Se muestra "Archivo activo".
+
+------------------------------------------------------------
+PASO 4 - Editar codigo
+------------------------------------------------------------
+1) Escribir o modificar texto en el editor.
+2) Verifica estado:
+   - "* Modificado" si hay cambios no guardados.
+   - "Guardado" si no hay cambios pendientes.
+
+Tip:
+- Usa Tab para sangria en bloques.
+
+------------------------------------------------------------
+PASO 5 - Guardar archivo
+------------------------------------------------------------
+Guardar normal:
+1) Click en "Guardar".
+
+Guardar con nuevo nombre:
+1) Click en "Guardar como".
+
+Atajo:
+- Ctrl+S para guardado rapido.
+
+Resultado esperado:
+- Consola muestra confirmacion de guardado.
+
+------------------------------------------------------------
+PASO 6 - Ejecutar compilador
+------------------------------------------------------------
+1) Verifica checkbox "Auto-guardar al ejecutar":
+   - Activado: guarda antes de correr.
+   - Desactivado: ejecuta ultima version guardada.
+2) Click en "Ejecutar".
+
+Que hace internamente:
+- Llama a programasCOMPI/scara.exe con el archivo activo.
+- Captura salida en consola en tiempo real.
+
+Resultado esperado:
+- Consola muestra trazas de compilacion/VM.
+- Si aplica, se abre ventana de visualizacion SDL2 (flotante).
+
+------------------------------------------------------------
+PASO 7 - Detener una ejecucion
+------------------------------------------------------------
+1) Mientras corre, click en "Detener".
+
+Resultado esperado:
+- La IDE solicita detener scara.exe.
+- Consola registra el evento.
+
+------------------------------------------------------------
+PASO 8 - Revisar salida en consola
+------------------------------------------------------------
+Filtros disponibles:
+- Todo: salida completa.
+- Errores: errores + contexto (linea, codigo, caret).
+- VM: solo lineas [VM].
+
+Acciones utiles:
+- "Copiar consola": copia salida visible.
+- "Exportar .txt": guarda salida visible a archivo.
+- "Limpiar consola": limpia historial de vista.
+
+------------------------------------------------------------
+PASO 9 - Buscar texto en consola
+------------------------------------------------------------
+1) Escribir termino en campo "Buscar".
+2) Navegar con "Anterior" y "Siguiente".
+
+Atajos:
+- F3: siguiente coincidencia.
+- Shift+F3: coincidencia anterior.
+- Ctrl+F: enfocar campo de busqueda.
+
+Opciones:
+- "Buscar en todo el log"
+- "Case sensitive"
+- "Palabra completa"
+
+Historial:
+- Enter guarda busqueda.
+- "Repetir ultima" reutiliza la mas reciente.
+- "<Hist" y "Hist>" recorren historial.
+
+------------------------------------------------------------
+PASO 10 - Ajustar interfaz
+------------------------------------------------------------
+1) "Panel derecho" (checkbox): mostrar/ocultar panel lateral.
+2) "Consola %" (barra 0-100): cambiar altura de consola.
+3) "Restaurar defaults": volver a valores iniciales.
+
+Persistencia:
+- La IDE guarda preferencias en scara_ide_basica.cfg al cerrar.
+- Al abrir de nuevo, restaura configuracion previa.
+
+------------------------------------------------------------
+PASO 11 - Interpretar estados rapidos
+------------------------------------------------------------
+Barra de estado muestra:
+- LISTO: sin ejecucion en curso.
+- EJECUTANDO: proceso activo.
+- CON ERRORES: hay errores visibles en consola.
+- CON AVISOS: hay avisos visibles.
+- ERROR DE EJECUCION: ultima corrida termino con codigo no cero.
+
+Botones rapidos de estado:
+- Err, Avisos, VM, Todo.
+- Aplican filtros y enfocan consola para inspeccion.
+
+------------------------------------------------------------
+PASO 12 - Cerrar sin perder cambios
+------------------------------------------------------------
+1) Si hay cambios sin guardar y cierras la ventana, aparece confirmacion.
+2) Elegir una opcion:
+   - Guardar y salir
+   - Salir sin guardar
+   - Cancelar
+
+------------------------------------------------------------
+FLUJO RECOMENDADO DE CLASE
+------------------------------------------------------------
+1) Seleccionar carpeta.
+2) Abrir .scara.
+3) Editar.
+4) Ctrl+S.
+5) Ejecutar.
+6) Revisar filtro Errores.
+7) Corregir y repetir.
+
+------------------------------------------------------------
+SOLUCION DE PROBLEMAS (RAPIDO)
+------------------------------------------------------------
+Problema: "No se encontro scara.exe"
+- Verifica que exista en scara/programasCOMPI/scara.exe.
+
+Problema: "No se puede guardar"
+- Revisa permisos de carpeta o usa "Guardar como".
+
+Problema: no aparece detalle de error
+- Cambia filtro a "Errores" o "Todo".
+- Desactiva filtros de busqueda demasiado restrictivos.
+
+Problema: la visualizacion se sale de pantalla
+- Ya esta ajustada a ventana flotante reducida.
+- Si aun molesta, se puede reducir mas en siguiente ajuste.
+
+FIN

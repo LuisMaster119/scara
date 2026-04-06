@@ -29,11 +29,140 @@ ACTUALIZACION IDE SCARA (2026-04-04):
 ROADMAP IDE (siguientes bloques):
 - B1: resaltado sintactico real en editor principal. [CERRADO 2026-04-05]
 - B2: navegacion avanzada por referencias/problemas (doble click/Enter). [CERRADO 2026-04-05]
-- B3: integracion visual embebida real del robot en el panel visual.
-- B4: restauracion de sesion (tabs, tab activo, cursor/scroll).
+- B3: integracion visual embebida real del robot en el panel visual. [EN PROGRESO]
+  - Timeline multi-corrida reconstruida desde consola VM.
+  - Selector de corrida activo en panel visual.
+  - Fallback explicito para corridas sin traza o con traza incompleta.
+  - Metricas por corrida (lineas VM, posiciones parseadas y rango de consola).
+  - Filtro rapido de consola por corrida para diagnostico contextual.
+  - Navegacion cruzada consola -> visual (seleccion de linea sincroniza run/paso).
+  - Sincronizacion robusta visual -> consola: el paso actual de timeline selecciona y enfoca consistentemente su linea de consola asociada.
+  - Estabilidad de seleccion de consola al cambiar filtro/corrida: conserva linea valida visible y evita saltos bruscos en scroll.
+  - Cambio de corrida desde combo visual sincroniza opcionalmente filtro de consola y selecciona evento util de corrida (inicio/fin segun contexto).
+  - Preferencia persistida de auto-seleccion al cambiar corrida (`Mantener/Primero/Ultimo`) aplicada a sincronizacion visual-consola.
+  - Navegacion por teclado en consola entre eventos VM/Pos (`Alt+PgUp/PgDn`) con sincronizacion inmediata al paso visual.
+  - Modo "Snap evento" al mover timeline manualmente: la consola selecciona el evento VM/Pos mas cercano de la corrida activa.
+  - Persistencia en cfg de la preferencia "Snap evento" para conservar comportamiento tras reiniciar IDE.
+  - Accion rapida "Ir evento actual" en consola para enfocar el evento VM/Pos correspondiente al paso visual activo.
+  - Acciones rapidas "Prev evento/Next evento" en consola (con ciclo) para recorrer eventos VM/Pos sin perder sincronizacion visual.
+  - Feedback temporal en consola cuando la navegacion VM/Pos no encuentra evento previo/siguiente en el rango filtrado activo.
+  - Indicador en vivo de cantidad de eventos VM/Pos visibles en el rango de consola activo para contextualizar la navegacion.
+  - Botones "Prev evento/Next evento" deshabilitados automaticamente cuando no hay eventos VM/Pos en el rango activo (con etiqueta explicita).
+  - Boton "Ir evento actual" deshabilitado cuando no existe evento VM/Pos valido para el paso visual activo.
+  - Indicador de posicion de evento actual VM/Pos en consola (`Actual n/total`) para navegacion con contexto preciso.
+  - Modo escolar activable desde menu: oculta controles avanzados y deja navegacion esencial + metricas simples (E/W/I, eventos VM/Pos y paso visual).
+  - Etiquetas de estado mas precisas en corridas: [sin VM], [VM sin Pos], [incompleta].
+  - Marcado visual de lineas VM/Pos en consola para lectura rapida.
+  - Modo "seguir seleccion de consola" para pausar y enfocar timeline al seleccionar linea.
+  - Auto-seguimiento de consola por paso visual durante reproduccion.
+  - Leyenda visual VM/Pos/Otros en consola para lectura inmediata.
+  - Boton "Centrar efector" para recentrar camara en el paso actual.
+  - Scrub de timeline por teclado (Izq/Der, Shift para salto amplio).
+  - Atajos Home/End para ir al primer/ultimo paso del timeline.
+  - Persistencia de estado visual por corrida (paso, zoom y pan).
+  - Comparacion A/B en panel visual con superposicion de corridas.
+  - Selector de corrida secundaria y modo de sincronizacion de paso.
+  - Metricas delta A/B por paso (dX, dY, dZ y distancia).
+  - Modo ghost trail para corrida comparada en overlay.
+  - Sincronizacion temporal normalizada A/B por porcentaje de progreso.
+  - Export de snapshot comparativo A/B a consola con deltas del paso actual.
+  - Historial local de snapshots A/B en panel visual con limpieza rapida.
+  - Umbrales configurables de distancia (warn/crit) con coloreado de delta.
+  - Filtro de snapshots por severidad (Todos / Warn+ / Crit).
+  - Click en snapshot para saltar a pasos A/B asociados en comparacion.
+  - Ordenamiento de snapshots (recientes, distancia asc/desc, pinned).
+  - Fijado (pin/unpin) de snapshots para casos de referencia.
+  - Export CSV del historial A/B para analisis externo.
+  - Export CSV solo de snapshots visibles segun filtro/orden activo.
+  - Export CSV visible con timestamp en nombre de archivo (sin sobreescritura).
+  - Estadisticas en vivo del historial (n, min, max, promedio de distancia).
+  - Mini analitica visual de distancia (sparkline + histograma por bins).
+  - Filtro adicional por rango de distancia (min y max opcional) en snapshots A/B.
+  - Copiado rapido al portapapeles de snapshot actual A/B desde panel visual.
+  - Copiado por fila de snapshot historico para evidencia puntual.
+  - Presets rapidos de filtros de snapshot (P1/P2/P3) con guardar/cargar.
+  - Persistencia de filtros/presets de snapshots en scara_ide_ui.cfg (restauracion al reiniciar IDE).
+  - Copiado directo al portapapeles de CSV de snapshots visibles (sin archivo temporal).
+  - Indicador de estado del preset activo (vacio/guardado/aplicado) en panel A/B.
+  - Copiado al portapapeles de CSV completo de snapshots A/B.
+  - Feedback visual tipo toast para acciones de copiar/exportar en panel A/B.
+  - Toast con severidad visual (Aviso/Error) segun resultado de copiar/exportar.
+  - Cola corta de toasts (secuencial) para evitar que eventos rapidos pisen el aviso previo.
+  - Priorizacion de errores en cola de toasts (se conserva feedback critico bajo rafaga).
+  - Indicador de pendientes en toast activo ("+N") para visibilidad de cola.
+  - Compactacion de toasts repetidos con sufijo (xN) para acciones consecutivas iguales.
+  - Persistencia de umbrales Warn/Crit de comparacion A/B en scara_ide_ui.cfg.
+  - Persistencia del modo comparacion A/B (Comparar, Sync paso, Sync %, Ghost).
+  - Persistencia de preferencias consola-visual (Seguir seleccion, Marcar VM/Pos, Consola sigue paso, Sync filtro).
+  - Persistencia de corrida activa y corrida comparada en panel visual (restauracion al reiniciar IDE).
+  - Persistencia de filtro de corrida en consola (activo + indice seleccionado).
+  - Persistencia del paso comparado manual A/B (cuando Sync paso esta desactivado).
+  - Persistencia de estado de reproduccion visual (Play/Pausa y velocidad).
+  - Persistencia de zoom/pan base del panel visual (fallback al abrir corridas sin estado UI guardado).
+  - Renombre semantico al espanol en simbolos base del modulo visual embebido (tipos/helpers principales).
+  - Renombre semantico al espanol en helpers locales de UI visual (toasts y estado UI por corrida).
+  - Renombre semantico al espanol en variables locales del bloque A/B y snapshots del panel visual.
+  - Renombre semantico al espanol en helpers/variables del panel de Problemas y la consola integrada.
+  - Renombre semantico al espanol en utilidades de busqueda/referencias del editor (funciones helper y llamadas).
+  - Renombre semantico al espanol en helpers de simbolos/diagnosticos (firma, filtros, orden y deteccion de tipo).
+  - Renombre semantico al espanol en helpers de apertura/guardado/ejecucion de tabs y parseo de consola.
+  - Renombre semantico al espanol en helpers de explorador/proyecto/tema y normalizacion de rutas.
+  - Renombre semantico al espanol en helpers de texto/referencias/autocompletado del editor.
+  - Renombre semantico al espanol en helpers base restantes (mayusculas, cache sintaxis, parse bool, ruta estado UI, callback cursor).
+  - Renombre semantico al espanol en tipos principales de UI/diagnosticos (tabs, simbolos, estados y captura cursor).
+  - Renombre semantico al espanol en variables locales de reconstruccion de corridas visuales (estado temporal de corrida/velocidad/pinza).
+  - Renombre semantico al espanol en variables locales sueltas (indice timeline, parseo de diagnosticos y apertura de tabs).
+  - Renombre semantico al espanol en parametros/variables locales de dibujado visual embebido (canvas, indice actual y comparada).
+  - Renombre semantico al espanol en helper de ajuste de ventana a limites utiles (nombre + variables internas + comentario).
+  - Renombre semantico al espanol en helpers restantes de simbolo/diagnostico (`simbolo_desde_linea`, `abrir_item_diagnostico`).
+  - Renombre semantico al espanol en variables UI base y preferencias persistidas (paneles, filtros, diagnosticos, pestana activa y bloque `_pref` de consola/visual).
+  - Renombre semantico al espanol en estado de editor y filtros de diagnosticos (buscar/ir-a, referencias, simbolos y banderas E/W/I).
+  - Renombre semantico al espanol en estado del panel de problemas (`consulta_busqueda`, `modo_orden`, `indice_seleccionado`) y campo `entrada_ir_a_linea`.
+  - Renombre semantico al espanol en parametros/locales residuales de helpers de referencias, busqueda y diagnosticos (`origen`, `simbolo`, `linea_preferida`, `consulta`, `filtro`, `valor_por_defecto`).
+  - Renombre semantico al espanol en dominio de simbolos: campo `ItemSimbolo::name` y usos asociados en parseo, filtros y panel UI (`nombre`).
+  - Renombre semantico al espanol en `TabArchivoAbierto`: campo `name` -> `nombre` y usos directos en tab label, estado activo y status bar.
+  - Renombre semantico al espanol en `PresetFiltroSnapshotEmbebido`: `filter/sort/limit_max/max_dist/valid` -> `filtro/orden/limitar_max/dist_max/valido` (manteniendo claves cfg para compatibilidad).
+  - Renombre semantico al espanol en `EstadoUiCorridaEmbebida`: campo `valid` -> `valido` y usos internos de restauracion/guardado UI por corrida.
+  - Renombre semantico al espanol en `TabArchivoAbierto`: `open/dirty` -> `abierta/modificada` y usos en guardado, tabs y estado visual.
+  - Renombre semantico al espanol en `TabArchivoAbierto`: `content` -> `contenido` y usos en edicion, busqueda, refs, guardado y paneles UI.
+  - Fase B4 (sesion) - Bloque B4.1: persistencia/restauracion de `pestana_activa` en `scara_ide_ui.cfg` con ajuste de rango seguro al iniciar.
+  - Fase B4 (sesion) - Bloque B4.2: persistencia/restauracion de `cursor_pos_activo` y `linea_foco_activa` para la pestana activa, con validacion de rangos al iniciar.
+  - Fase B4 (sesion) - Bloque B4.3: persistencia/restauracion de estado de UI de busqueda del editor (`mostrar_buscar`, `consulta_buscar`, `mostrar_ir_a`, `entrada_ir_a_linea`).
+  - Fase B4 (sesion) - Bloque B4.4: persistencia/restauracion del panel de referencias del editor (`mostrar_refs`, `simbolo_refs`).
+  - Fase B4 (sesion) - Bloque B4.5: persistencia/restauracion de ir a definicion del editor (`mostrar_ir_def`, `simbolo_ir_def`).
+  - Fase B4 (sesion) - Bloque B4.6: al restaurar `pestana_activa`, sincronizar `breadcrumb` con la ruta real de la pestana restaurada.
+  - Fase B4 (sesion) - Bloque B4.7: recalculo de `coincidencias_refs`/`indice_refs` al restaurar si existe `simbolo_refs` en la pestana activa.
+  - Fase B4 (sesion) - Bloque B4.8: persistencia/restauracion de contexto de referencias (`indice_refs`, `origen_refs`) con saneamiento al iniciar.
+  - Fase B4 (sesion) - Bloque B4.9: persistencia/restauracion de `console_linea_seleccionada` en config de UI, con saneamiento de rango en arranque.
+  - Fase B4 (sesion) - Bloque B4.10: persistencia/restauracion de `indice_buscar` y reconstruccion de `coincidencias_buscar` al iniciar en la pestana activa.
+  - Fase B4 (sesion) - Bloque B4.11: persistencia/restauracion de `indice_seleccionado` del panel de problemas con saneamiento base y revalidacion contra diagnosticos visibles en runtime.
+  - Fase B4 (sesion) - Bloque B4.12: persistencia/restauracion de `firma_seleccionada` del panel de problemas para recuperar seleccion exacta entre ordenes y filtros.
+  - Fase B4 (sesion) - Bloque B4.13: persistencia segura de `firma_seleccionada` en cfg con codificacion/decodificacion robusta (prefijo `hex:`) y compatibilidad retroactiva.
+  - Fase B4 (sesion) - Bloque B4.14: extension de codificacion/decodificacion segura (`hex:`) a cadenas de sesion adicionales (busqueda/filtros/simbolos/referencias) con compatibilidad retroactiva.
+  - Fase B4 (sesion) - Bloque B4.15: centralizacion de claves string de sesion y helpers reutilizables de lectura/escritura segura (`hex:`) para reducir repeticion sin cambiar formato ni compatibilidad.
+  - Fase B4 (sesion) - Bloque B4.16: centralizacion de parseo/guardado de claves bool/int/float en cfg mediante helpers reutilizables, conservando formato de archivo y saneamientos existentes.
+  - Fase B4 (sesion) - Bloque B4.17: extraccion de claves cfg restantes a constantes compartidas (incluyendo prefijos/sufijos de presets snapshot) para reducir riesgo de typo y unificar carga/guardado.
+  - Fase B4 (sesion) - Bloque B4.18: encapsulacion del saneamiento post-carga en helpers por dominio (panel de problemas, editor y visual embebido/consola) sin cambios funcionales.
+  - Fase B4 (sesion) - Bloque B4.19: refactor declarativo de carga cfg con tabla de manejadores (reemplazo de cadena `else if`), manteniendo formato y comportamiento de restauracion.
+  - Fase B4 (sesion) - Bloque B4.20: refactor declarativo de guardado cfg con tabla de manejadores (mismo orden de claves, mismo formato y misma compatibilidad).
+  - Fase B4 (sesion) - Bloque B4.21: optimizacion de tablas declarativas cfg con campos tipados ligeros (sin `std::function`/capturas), manteniendo orden y compatibilidad del archivo.
+  - Fase B4 (sesion) - Bloque B4.22: migracion tipada de presets snapshot en carga/guardado cfg (sin cadena `if/else` por slot), preservando claves y formato existentes.
+  - Fase B4 (sesion) - Bloque B4.23: parseo numerico estricto en restauracion cfg (int/float) con rechazo de entradas invalidas o fuera de rango, preservando compatibilidad y saneamientos.
+  - Fase B4 (sesion) - Bloque B4.24: eliminacion de `atoi` residuales fuera de cfg (goto/eventos compactados) con parseo entero estricto y feedback explicito ante entrada invalida.
+  - Fase B4 (sesion) - Bloque B4.25: endurecimiento adicional de parseo float estricto con rechazo explicito de valores no finitos (NaN/Inf) en restauracion de cfg.
+  - Fase B4 (sesion) - Bloque B4.26: helper comun para parseo entero en entradas numericas de UI con feedback uniforme (invalida/fuera de rango), aplicado a "Ir a linea".
+  - Fase B4 (sesion) - Bloque B4.27: estandarizacion del formato de mensajes de feedback numerico en UI mediante helper dedicado (sin cambios funcionales de parseo).
+  - Fase B4 (sesion) - Bloque B4.28: helper comun de feedback UI no numerico para errores operativos (abrir/guardar/ejecutar), con mensajes consistentes por contexto.
+  - Fase B4 (sesion) - Bloque B4.29: helper comun de feedback INFO para operaciones de abrir/guardar exitosas, manteniendo el marcador legacy `[IDE] Ejecutando:` para compatibilidad de reconstruccion de corridas.
+  - Fase B4 (sesion) - Bloque B4.30: unificacion de eventos operativos UI (`INFO`/`ERROR`) en helper unico con tipo + contexto + detalle, migrando llamadas de abrir/guardar/ejecutar.
+  - Fase B4 (sesion) - Bloque B4.31: migracion del ultimo error legacy de ejecucion de proceso externo al helper operativo unificado (`TipoEventoUi::Error`).
+  - Fase B4 (sesion) - CIERRE: bloque de restauracion/sesion consolidado y cerrado con build verde y trazabilidad completa de sub-bloques.
+  - Accion "Limpiar toast" para cerrar manualmente el aviso visual.
+  - Consola con compactacion de eventos repetidos de copiar/exportar (sufijo xN).
+- B4: restauracion de sesion (tabs, tab activo, cursor/scroll). [CERRADO 2026-04-05]
 - B5: automatizacion de regresion para IDE + compilador.
 
-Siguiente bloque recomendado: B3.
+Siguiente bloque recomendado: B3 (EN PROGRESO).
 
 
 ================================================================

@@ -144,12 +144,7 @@ static void guardar_cfg_ide_basica(const std::string& ruta_cfg,
                                    bool panel_derecho_abierto,
                                    bool auto_guardar_antes_ejecutar,
                                    float proporcion_altura_consola,
-                                   int filtro_consola,
-                                   const std::string& consulta_consola,
-                                   bool buscar_en_todo_log,
-                                   bool busqueda_case_sensitive,
-                                   bool busqueda_palabra_completa,
-                                   const std::deque<std::string>& historial_busquedas_consola) {
+                                   int filtro_consola) {
     std::ofstream out(ruta_cfg, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return;
@@ -160,35 +155,18 @@ static void guardar_cfg_ide_basica(const std::string& ruta_cfg,
     out << "auto_guardar_antes_ejecutar=" << (auto_guardar_antes_ejecutar ? "1" : "0") << "\n";
     out << "proporcion_altura_consola=" << proporcion_altura_consola << "\n";
     out << "filtro_consola=" << filtro_consola << "\n";
-    out << "consulta_consola=" << escapar_cfg(consulta_consola) << "\n";
-    out << "buscar_en_todo_log=" << (buscar_en_todo_log ? "1" : "0") << "\n";
-    out << "busqueda_case_sensitive=" << (busqueda_case_sensitive ? "1" : "0") << "\n";
-    out << "busqueda_palabra_completa=" << (busqueda_palabra_completa ? "1" : "0") << "\n";
-
-    int hist_count = static_cast<int>(historial_busquedas_consola.size());
-    if (hist_count > 5) hist_count = 5;
-    out << "hist_count=" << hist_count << "\n";
-    for (int i = 0; i < hist_count; ++i) {
-        out << "hist_" << i << "=" << escapar_cfg(historial_busquedas_consola[static_cast<size_t>(i)]) << "\n";
-    }
 }
 
 static bool cargar_cfg_ide_basica(const std::string& ruta_cfg,
                                   bool& panel_derecho_abierto,
                                   bool& auto_guardar_antes_ejecutar,
                                   float& proporcion_altura_consola,
-                                  int& filtro_consola,
-                                  std::string& consulta_consola,
-                                  bool& buscar_en_todo_log,
-                                  bool& busqueda_case_sensitive,
-                                  bool& busqueda_palabra_completa,
-                                  std::deque<std::string>& historial_busquedas_consola) {
+                                  int& filtro_consola) {
     std::ifstream in(ruta_cfg, std::ios::binary);
     if (!in.is_open()) {
         return false;
     }
 
-    std::vector<std::string> historial_tmp;
     std::string line;
     while (std::getline(in, line)) {
         size_t eq = line.find('=');
@@ -207,22 +185,6 @@ static bool cargar_cfg_ide_basica(const std::string& ruta_cfg,
             proporcion_altura_consola = parsear_flotante_cfg(val, proporcion_altura_consola);
         } else if (key == "filtro_consola") {
             filtro_consola = parsear_entero_cfg(val, filtro_consola);
-        } else if (key == "consulta_consola") {
-            consulta_consola = val;
-        } else if (key == "buscar_en_todo_log") {
-            buscar_en_todo_log = parsear_bool_cfg(val, buscar_en_todo_log);
-        } else if (key == "busqueda_case_sensitive") {
-            busqueda_case_sensitive = parsear_bool_cfg(val, busqueda_case_sensitive);
-        } else if (key == "busqueda_palabra_completa") {
-            busqueda_palabra_completa = parsear_bool_cfg(val, busqueda_palabra_completa);
-        } else if (key.rfind("hist_", 0) == 0) {
-            int idx = parsear_entero_cfg(key.substr(5), -1);
-            if (idx >= 0 && idx < 5) {
-                if (historial_tmp.size() <= static_cast<size_t>(idx)) {
-                    historial_tmp.resize(static_cast<size_t>(idx) + 1);
-                }
-                historial_tmp[static_cast<size_t>(idx)] = val;
-            }
         }
     }
 
@@ -231,13 +193,6 @@ static bool cargar_cfg_ide_basica(const std::string& ruta_cfg,
     }
     if (proporcion_altura_consola < 0.18f || proporcion_altura_consola > 0.70f) {
         proporcion_altura_consola = 0.28f;
-    }
-
-    historial_busquedas_consola.clear();
-    for (const std::string& item : historial_tmp) {
-        if (!item.empty()) {
-            historial_busquedas_consola.push_back(item);
-        }
     }
 
     return true;
@@ -294,142 +249,7 @@ static bool linea_consola_visible(const std::string& linea, int filtro_consola) 
     return true;
 }
 
-static std::string texto_mayus(const std::string& s) {
-    std::string out = s;
-    for (char& c : out) {
-        if (c >= 'a' && c <= 'z') {
-            c = static_cast<char>(c - ('a' - 'A'));
-        }
-    }
-    return out;
-}
 
-static bool es_caracter_palabra(char c) {
-    return (c == '_') ||
-           (c >= 'A' && c <= 'Z') ||
-           (c >= 'a' && c <= 'z') ||
-           (c >= '0' && c <= '9');
-}
-
-static int posicion_match_texto(const std::string& texto,
-                                const std::string& consulta,
-                                bool case_sensitive,
-                                bool palabra_completa) {
-    if (consulta.empty()) {
-        return -1;
-    }
-
-    const std::string t = case_sensitive ? texto : texto_mayus(texto);
-    const std::string q = case_sensitive ? consulta : texto_mayus(consulta);
-
-    size_t inicio_busqueda = 0;
-    while (inicio_busqueda <= t.size()) {
-        size_t pos = t.find(q, inicio_busqueda);
-        if (pos == std::string::npos) {
-            return -1;
-        }
-
-        if (!palabra_completa) {
-            return static_cast<int>(pos);
-        }
-
-        const bool borde_izq = (pos == 0) || !es_caracter_palabra(texto[pos - 1]);
-        const size_t fin = pos + q.size();
-        const bool borde_der = (fin >= texto.size()) || !es_caracter_palabra(texto[fin]);
-        if (borde_izq && borde_der) {
-            return static_cast<int>(pos);
-        }
-
-        inicio_busqueda = pos + 1;
-    }
-
-    return -1;
-}
-
-static bool contiene_texto(const std::string& texto,
-                           const std::string& consulta,
-                           bool case_sensitive,
-                           bool palabra_completa) {
-    if (consulta.empty()) {
-        return true;
-    }
-    return posicion_match_texto(texto, consulta, case_sensitive, palabra_completa) >= 0;
-}
-
-static void registrar_busqueda_reciente(std::deque<std::string>& historial,
-                                        const std::string& consulta,
-                                        size_t max_items) {
-    if (consulta.empty()) {
-        return;
-    }
-
-    // LUIS: Evitamos duplicados exactos para que el historial sea corto y realmente util.
-    auto it = std::find(historial.begin(), historial.end(), consulta);
-    if (it != historial.end()) {
-        historial.erase(it);
-    }
-
-    historial.push_front(consulta);
-    while (historial.size() > max_items) {
-        historial.pop_back();
-    }
-}
-
-static void dibujar_linea_con_resaltado_busqueda(const std::string& linea,
-                                                 const std::string& consulta,
-                                                 bool case_sensitive,
-                                                 bool palabra_completa,
-                                                 bool es_linea_objetivo) {
-    std::string texto = linea;
-    while (!texto.empty() && (texto.back() == '\n' || texto.back() == '\r')) {
-        texto.pop_back();
-    }
-
-    int pos = posicion_match_texto(texto, consulta, case_sensitive, palabra_completa);
-    if (pos < 0 || consulta.empty()) {
-        if (es_linea_objetivo) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.82f, 0.24f, 0.16f, 1.0f));
-        }
-        ImGui::TextUnformatted(texto.c_str());
-        if (es_linea_objetivo) {
-            ImGui::PopStyleColor();
-        }
-        return;
-    }
-
-    // AVILA: Partimos la linea en prefijo/match/sufijo para colorear solo la subcadena encontrada.
-    std::string prefijo = texto.substr(0, static_cast<size_t>(pos));
-    std::string match = texto.substr(static_cast<size_t>(pos), consulta.size());
-    std::string sufijo = texto.substr(static_cast<size_t>(pos) + consulta.size());
-
-    if (!prefijo.empty()) {
-        if (es_linea_objetivo) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.82f, 0.24f, 0.16f, 1.0f));
-        }
-        ImGui::TextUnformatted(prefijo.c_str());
-        if (es_linea_objetivo) {
-            ImGui::PopStyleColor();
-        }
-        ImGui::SameLine(0.0f, 0.0f);
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Text, es_linea_objetivo
-        ? ImVec4(0.95f, 0.55f, 0.10f, 1.0f)
-        : ImVec4(0.88f, 0.68f, 0.05f, 1.0f));
-    ImGui::TextUnformatted(match.c_str());
-    ImGui::PopStyleColor();
-
-    if (!sufijo.empty()) {
-        ImGui::SameLine(0.0f, 0.0f);
-        if (es_linea_objetivo) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.82f, 0.24f, 0.16f, 1.0f));
-        }
-        ImGui::TextUnformatted(sufijo.c_str());
-        if (es_linea_objetivo) {
-            ImGui::PopStyleColor();
-        }
-    }
-}
 
 static std::string construir_texto_consola_filtrada(const std::vector<std::string>& lineas,
                                                     int filtro_consola) {
@@ -726,21 +546,11 @@ int main(int, char**) {
     bool auto_guardar_antes_ejecutar = true;
     float proporcion_altura_consola = 0.28f;
     int filtro_consola = 0; // 0=Todo, 1=Errores, 2=VM
-    std::string consulta_consola;
-    bool buscar_en_todo_log = false;
-    bool busqueda_case_sensitive = false;
-    bool busqueda_palabra_completa = false;
-    std::deque<std::string> historial_busquedas_consola;
-    int indice_historial_busqueda = -1;
-    int idx_match_consola = -1;
-    bool pedir_focus_match = false;
-    bool enfocar_input_busqueda = false;
     bool enfocar_consola_rapido = false;
     bool solicitar_confirmacion_cierre = false;
     bool cerrar_al_terminar = false;
     bool cfg_cargada_desde_archivo = false;
     int estado_lineas_visibles = 0;
-    int estado_coincidencias = 0;
     int estado_errores_visibles = 0;
     int estado_avisos_visibles = 0;
     int estado_vm_visibles = 0;
@@ -764,12 +574,7 @@ int main(int, char**) {
                                                        panel_derecho_abierto,
                                                        auto_guardar_antes_ejecutar,
                                                        proporcion_altura_consola,
-                                                       filtro_consola,
-                                                       consulta_consola,
-                                                       buscar_en_todo_log,
-                                                       busqueda_case_sensitive,
-                                                       busqueda_palabra_completa,
-                                                       historial_busquedas_consola);
+                                                       filtro_consola);
 
     // AVILA: Loop principal de la app; cada vuelta procesa eventos, dibuja UI y sincroniza consola.
     while (corriendo) {
@@ -919,15 +724,6 @@ int main(int, char**) {
             auto_guardar_antes_ejecutar = true;
             proporcion_altura_consola = 0.28f;
             filtro_consola = 0;
-            consulta_consola.clear();
-            buscar_en_todo_log = false;
-            busqueda_case_sensitive = false;
-            busqueda_palabra_completa = false;
-            historial_busquedas_consola.clear();
-            indice_historial_busqueda = -1;
-            idx_match_consola = -1;
-            pedir_focus_match = false;
-            enfocar_input_busqueda = false;
             lineas_consola.push_back("[IDE] Preferencias restauradas a defaults.\n");
             limitar_consola(lineas_consola, max_lineas_consola);
         }
@@ -1071,10 +867,9 @@ int main(int, char**) {
         }
         // AARON: Barra de estado compacta para mostrar contexto de trabajo sin abrir paneles extra.
         ImGui::PushStyleColor(ImGuiCol_Text, color_estado);
-        ImGui::Text("Archivo: %s | Filtro: %s | Coincidencias: %d | Visibles: %d | %s",
+        ImGui::Text("Archivo: %s | Filtro: %s | Visibles: %d | %s",
                 etiqueta_archivo.c_str(),
                 etiqueta_filtro,
-                estado_coincidencias,
                 estado_lineas_visibles,
                 etiqueta_cfg);
         ImGui::PopStyleColor();
@@ -1083,35 +878,21 @@ int main(int, char**) {
         if (ImGui::SmallButton((std::string("Err: ") + std::to_string(estado_errores_visibles)).c_str())) {
             // LUIS: Atajo visual para saltar directo al filtro de errores desde la barra de estado.
             filtro_consola = 1;
-            buscar_en_todo_log = false;
-            consulta_consola.clear();
-            idx_match_consola = 0;
-            pedir_focus_match = true;
             enfocar_consola_rapido = true;
         }
         ImGui::SameLine();
         if (ImGui::SmallButton((std::string("Avisos: ") + std::to_string(estado_avisos_visibles)).c_str())) {
             filtro_consola = 0;
-            consulta_consola = "AVISO";
-            idx_match_consola = 0;
-            buscar_en_todo_log = false;
-            pedir_focus_match = true;
             enfocar_consola_rapido = true;
         }
         ImGui::SameLine();
         if (ImGui::SmallButton((std::string("VM: ") + std::to_string(estado_vm_visibles)).c_str())) {
             filtro_consola = 2;
-            buscar_en_todo_log = false;
-            consulta_consola.clear();
-            idx_match_consola = 0;
-            pedir_focus_match = true;
             enfocar_consola_rapido = true;
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Todo")) {
             filtro_consola = 0;
-            idx_match_consola = 0;
-            pedir_focus_match = true;
             enfocar_consola_rapido = true;
         }
         ImGui::Separator();
@@ -1247,7 +1028,6 @@ int main(int, char**) {
         if (ImGui::Button("Limpiar consola")) {
             lineas_consola.clear();
             lineas_consola.push_back("[IDE] Consola limpiada.\n");
-            idx_match_consola = -1;
         }
         ImGui::SameLine();
         ImGui::TextUnformatted("Filtro:");
@@ -1299,165 +1079,10 @@ int main(int, char**) {
         ImGui::Text("Lineas: %d", static_cast<int>(lineas_consola.size()));
         ImGui::Separator();
 
-        ImGui::TextUnformatted("Buscar:");
-        ImGui::SameLine();
-        // AVILA: Busqueda simple sobre lo visible para que el alumno relacione filtro + texto buscado.
-        if (enfocar_input_busqueda) {
-            ImGui::SetKeyboardFocusHere();
-            enfocar_input_busqueda = false;
-        }
-        bool envio_busqueda = ImGui::InputText("##buscar_consola",
-                                               &consulta_consola,
-                                               ImGuiInputTextFlags_EnterReturnsTrue);
-        if (ImGui::IsItemEdited()) {
-            idx_match_consola = -1;
-            indice_historial_busqueda = -1;
-        }
-        if (envio_busqueda) {
-            // AARON: Registrar al presionar Enter acelera repetir patrones de depuracion.
-            registrar_busqueda_reciente(historial_busquedas_consola, consulta_consola, 5);
-            indice_historial_busqueda = -1;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Limpiar busqueda")) {
-            // LUIS: Reiniciamos consulta e indice para regresar a una vista neutral de consola.
-            consulta_consola.clear();
-            idx_match_consola = -1;
-            pedir_focus_match = false;
-            indice_historial_busqueda = -1;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Repetir ultima")) {
-            if (!historial_busquedas_consola.empty()) {
-                consulta_consola = historial_busquedas_consola.front();
-                idx_match_consola = -1;
-                indice_historial_busqueda = 0;
-                enfocar_input_busqueda = true;
-                lineas_consola.push_back("[IDE] Repetida ultima busqueda: " + consulta_consola + "\n");
-                limitar_consola(lineas_consola, max_lineas_consola);
-            }
-        }
-        ImGui::SameLine();
-        bool hay_historial_busqueda = !historial_busquedas_consola.empty();
-        if (!hay_historial_busqueda) ImGui::BeginDisabled();
-        if (ImGui::Button("<Hist")) {
-            // ALDA: Navegacion circular del historial para reutilizar consultas sin teclear de nuevo.
-            if (indice_historial_busqueda < 0) {
-                indice_historial_busqueda = 0;
-            } else {
-                indice_historial_busqueda = (indice_historial_busqueda + 1) %
-                                            static_cast<int>(historial_busquedas_consola.size());
-            }
-            consulta_consola = historial_busquedas_consola[static_cast<size_t>(indice_historial_busqueda)];
-            idx_match_consola = -1;
-            enfocar_input_busqueda = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Hist>")) {
-            if (indice_historial_busqueda < 0) {
-                indice_historial_busqueda = static_cast<int>(historial_busquedas_consola.size()) - 1;
-            } else {
-                indice_historial_busqueda = (indice_historial_busqueda - 1 +
-                                            static_cast<int>(historial_busquedas_consola.size())) %
-                                            static_cast<int>(historial_busquedas_consola.size());
-            }
-            consulta_consola = historial_busquedas_consola[static_cast<size_t>(indice_historial_busqueda)];
-            idx_match_consola = -1;
-            enfocar_input_busqueda = true;
-        }
-        if (!hay_historial_busqueda) ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Buscar en todo el log", &buscar_en_todo_log)) {
-            idx_match_consola = -1;
-        }
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Case sensitive", &busqueda_case_sensitive)) {
-            idx_match_consola = -1;
-        }
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Palabra completa", &busqueda_palabra_completa)) {
-            idx_match_consola = -1;
-        }
-
-        std::vector<int> indices_lineas_match;
-        indices_lineas_match.reserve(lineas_consola.size());
-        for (int i = 0; i < static_cast<int>(lineas_consola.size()); ++i) {
-            const std::string& l = lineas_consola[i];
-            // AARON: Cuando esta activo "todo el log", ignoramos el filtro visual para buscar globalmente.
-            if (!buscar_en_todo_log && !linea_consola_visible(l, filtro_consola)) {
-                continue;
-            }
-            if (!contiene_texto(l,
-                                consulta_consola,
-                                busqueda_case_sensitive,
-                                busqueda_palabra_completa)) {
-                continue;
-            }
-            indices_lineas_match.push_back(i);
-        }
-
-        if (!indices_lineas_match.empty()) {
-            if (idx_match_consola < 0 || idx_match_consola >= static_cast<int>(indices_lineas_match.size())) {
-                idx_match_consola = 0;
-            }
-        } else {
-            idx_match_consola = -1;
-        }
-
-        ImGui::SameLine();
-        bool hay_match = !indices_lineas_match.empty();
-        if (!hay_match) ImGui::BeginDisabled();
-        if (ImGui::Button("Anterior")) {
-            // LUIS: Navegacion circular para evitar quedarse bloqueado en extremos de la lista.
-            idx_match_consola = (idx_match_consola - 1 + static_cast<int>(indices_lineas_match.size())) %
-                                static_cast<int>(indices_lineas_match.size());
-            pedir_focus_match = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Siguiente")) {
-            idx_match_consola = (idx_match_consola + 1) % static_cast<int>(indices_lineas_match.size());
-            pedir_focus_match = true;
-        }
-        if (!hay_match) ImGui::EndDisabled();
-
-        ImGui::SameLine();
-        if (hay_match) {
-            ImGui::Text("Coincidencias: %d | Actual: %d/%d",
-                        static_cast<int>(indices_lineas_match.size()),
-                        idx_match_consola + 1,
-                        static_cast<int>(indices_lineas_match.size()));
-        } else {
-            ImGui::TextUnformatted("Coincidencias: 0");
-        }
-
-        bool tecla_shift = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
-        if (hay_match && ImGui::IsKeyPressed(ImGuiKey_F3, false)) {
-            // LUIS: F3 avanza y Shift+F3 retrocede, igual que en IDEs tradicionales.
-            if (tecla_shift) {
-                idx_match_consola = (idx_match_consola - 1 + static_cast<int>(indices_lineas_match.size())) %
-                                    static_cast<int>(indices_lineas_match.size());
-            } else {
-                idx_match_consola = (idx_match_consola + 1) % static_cast<int>(indices_lineas_match.size());
-            }
-            pedir_focus_match = true;
-        }
-
-        bool ctrl_izq = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
-        bool ctrl_der = ImGui::IsKeyDown(ImGuiKey_RightCtrl);
-        if ((ctrl_izq || ctrl_der) && ImGui::IsKeyPressed(ImGuiKey_F, false)) {
-            // ALDA: Ctrl+F lleva el foco al buscador para trabajar la consola como una IDE real.
-            enfocar_input_busqueda = true;
-        }
-        ImGui::Separator();
-
         int lineas_visibles = 0;
         int errores_visibles = 0;
         int avisos_visibles = 0;
         int vm_visibles = 0;
-        int linea_objetivo = -1;
-        if (hay_match && idx_match_consola >= 0) {
-            linea_objetivo = indices_lineas_match[idx_match_consola];
-        }
         for (int i = 0; i < static_cast<int>(lineas_consola.size()); ++i) {
             const std::string& l = lineas_consola[i];
             // AARON: Recorremos todas las lineas y renderizamos solo las que pasan el filtro activo.
@@ -1476,20 +1101,12 @@ int main(int, char**) {
                 vm_visibles++;
             }
 
-            bool es_match_actual = (i == linea_objetivo);
-            dibujar_linea_con_resaltado_busqueda(l,
-                                                 consulta_consola,
-                                                 busqueda_case_sensitive,
-                                                 busqueda_palabra_completa,
-                                                 es_match_actual);
-            if (es_match_actual) {
-                if (pedir_focus_match) {
-                    ImGui::SetScrollHereY(0.5f);
-                }
+            std::string texto = l;
+            while (!texto.empty() && (texto.back() == '\n' || texto.back() == '\r')) {
+                texto.pop_back();
             }
+            ImGui::TextUnformatted(texto.c_str());
         }
-        pedir_focus_match = false;
-        estado_coincidencias = static_cast<int>(indices_lineas_match.size());
         estado_lineas_visibles = lineas_visibles;
         estado_errores_visibles = errores_visibles;
         estado_avisos_visibles = avisos_visibles;
@@ -1574,12 +1191,7 @@ int main(int, char**) {
                            panel_derecho_abierto,
                            auto_guardar_antes_ejecutar,
                            proporcion_altura_consola,
-                           filtro_consola,
-                           consulta_consola,
-                           buscar_en_todo_log,
-                           busqueda_case_sensitive,
-                           busqueda_palabra_completa,
-                           historial_busquedas_consola);
+                           filtro_consola);
 
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();

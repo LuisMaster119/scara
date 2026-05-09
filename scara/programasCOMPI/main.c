@@ -8,6 +8,8 @@
 #include "simbolos.h"
 #include "errores.h"
 #include "vm.h"
+#include "optimizador.h"
+#include "ensamblador.h"
 #include "cinematica.h"
 
 #define VIS_W 960
@@ -430,36 +432,89 @@ int main(int argc, char* argv[]) {
 
     // mostrar bytecode generado
     printf("\n=== BYTECODE GENERADO ===\n");
-        printf("%-4s %-14s %-6s %-6s %-6s %-5s %-14s %-14s %-14s\n",
-            "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "FLAGS", "SVAL", "SVAL2", "SVAL3");
-        printf("-----------------------------------------------------------------------------------------\n");
+    printf("%-4s %-14s %-6s %-6s %-6s %-5s %-14s %-14s %-14s\n",
+           "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "FLAGS", "SVAL", "SVAL2", "SVAL3");
+    printf("-----------------------------------------------------------------------------------------\n");
 
     for (int i = 0; i < bytecode_len; i++) {
         Instruccion* ins = &bytecode[i];
-         printf("%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s\n",
-             i, opcode_a_texto(ins->opcode),
+        printf("%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s\n",
+               i, opcode_a_texto(ins->opcode),
                ins->arg1, ins->arg2, ins->arg3,
-             ins->flags,
-             ins->sval,
-             ins->sval2,
-             ins->sval3);
+               ins->flags,
+               ins->sval,
+               ins->sval2,
+               ins->sval3);
     }
 
-        printf("\n=== EJECUCION VM (FASE 5) ===\n");
-        if (vm_ejecutar(bytecode, bytecode_len, 1) != 0) {
+    // optimizar bytecode antes de generar ensamblador
+    Instruccion bytecode_opt[MAX_INSTRUCCIONES];
+    int bytecode_opt_len = optimizar_bytecode(bytecode, bytecode_len,
+                                              bytecode_opt, MAX_INSTRUCCIONES);
+    if (bytecode_opt_len < 0) {
+        fprintf(stderr, "Error: no se puede optimizar el bytecode\n");
+        free(programa);
+        return 1;
+    }
+
+    printf("\n=== BYTECODE OPTIMIZADO ===\n");
+    printf("%-4s %-14s %-6s %-6s %-6s %-5s %-14s %-14s %-14s\n",
+           "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "FLAGS", "SVAL", "SVAL2", "SVAL3");
+    printf("-----------------------------------------------------------------------------------------\n");
+    for (int i = 0; i < bytecode_opt_len; i++) {
+        Instruccion* ins = &bytecode_opt[i];
+        printf("%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s\n",
+               i, opcode_a_texto(ins->opcode),
+               ins->arg1, ins->arg2, ins->arg3,
+               ins->flags,
+               ins->sval,
+               ins->sval2,
+               ins->sval3);
+    }
+
+    char ruta_asm[512];
+    const char* ext = strrchr(ruta_programa, '.');
+    if (ext) {
+        size_t pref_len = ext - ruta_programa;
+        if (pref_len >= sizeof(ruta_asm)) pref_len = sizeof(ruta_asm) - 1;
+        memcpy(ruta_asm, ruta_programa, pref_len);
+        ruta_asm[pref_len] = '\0';
+        strcat(ruta_asm, ".asm");
+    } else {
+        snprintf(ruta_asm, sizeof(ruta_asm), "%s.asm", ruta_programa);
+    }
+
+    if (generar_ensamblador(bytecode_opt, bytecode_opt_len, ruta_asm) != 0) {
+        fprintf(stderr, "Error: no se pudo generar el ensamblador '%s'\n", ruta_asm);
+        free(programa);
+        return 1;
+    }
+
+    printf("\n=== ENSAMBLADOR GENERADO: %s ===\n", ruta_asm);
+
+    Instruccion programa_asm[MAX_INSTRUCCIONES];
+    int programa_asm_len = MAX_INSTRUCCIONES;
+    if (ensamblador_leer(ruta_asm, programa_asm, &programa_asm_len) != 0) {
+        fprintf(stderr, "Error: no se pudo leer el ensamblador '%s'\n", ruta_asm);
+        free(programa);
+        return 1;
+    }
+
+    printf("\n=== EJECUTANDO ENSAMBLADOR EN VM ===\n");
+    if (vm_ejecutar(programa_asm, programa_asm_len, 1) != 0) {
+        free(programa);
+        return 1;
+    }
+
+    {
+        int n_traza = 0;
+        const VmEstado* traza = vm_obtener_traza_estados(&n_traza);
+        printf("\n=== VISUALIZACION SDL2 (FASE 5) ===\n");
+        if (visualizar_trayectoria_sdl(traza, n_traza, mantener_vis_abierta) != 0) {
             free(programa);
             return 1;
         }
-
-        {
-            int n_traza = 0;
-            const VmEstado* traza = vm_obtener_traza_estados(&n_traza);
-            printf("\n=== VISUALIZACION SDL2 (FASE 5) ===\n");
-            if (visualizar_trayectoria_sdl(traza, n_traza, mantener_vis_abierta) != 0) {
-                free(programa);
-                return 1;
-            }
-        }
+    }
 
     free(programa);
     return 0;

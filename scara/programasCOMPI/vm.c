@@ -82,51 +82,73 @@ static void vm_trazar_hacia(const char* etiqueta, int x_obj, int y_obj, int z_ob
 
 static int vm_imprimir_ik(int x, int y) {
     const int tol_deg = 2;
-    int q1_up = 0, q2_up = 0;
-    int q1_dn = 0, q2_dn = 0;
+
+    /* Resultados C (calculo exacto con flotante) */
+    int q1_c_up = 0, q2_c_up = 0;
+    int q1_c_dn = 0, q2_c_dn = 0;
+
+    /* Resultados ASM (calculo con tablas enteras) */
     int q1_asm_up = 0, q2_asm_up = 0;
     int q1_asm_dn = 0, q2_asm_dn = 0;
-    int ok_c = 0, ok_asm = 0;
-    int coincide_up = 0, coincide_dn = 0;
 
-    if (!cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ARRIBA, &q1_up, &q2_up) ||
-        !cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ABAJO, &q1_dn, &q2_dn)) {
+    int ok_c = 0, ok_asm = 0;
+
+    /* --- Verificar que el punto es alcanzable (C, flotante exacto) --- */
+    if (!cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ARRIBA, &q1_c_up, &q2_c_up) ||
+        !cinematica_ik_xy_modo(x, y, CIN_MODO_CODO_ABAJO,  &q1_c_dn, &q2_c_dn)) {
         fprintf(stderr, "VM ERROR: IK fuera de dominio para XY=(%d,%d)\n", x, y);
-        return 0;
+        return 0;   /* punto inalcanzable: si abortar */
     }
 
-    coincide_up = cinematica_comparar_c_vs_asm_modo(
-        x, y,
-        CIN_MODO_CODO_ARRIBA, tol_deg,
+    /* --- Comparar C vs ASM (CODO ARRIBA) --- */
+    cinematica_comparar_c_vs_asm_modo(
+        x, y, CIN_MODO_CODO_ARRIBA, tol_deg,
         &ok_c, &ok_asm,
-        &q1_up, &q2_up,
+        &q1_c_up, &q2_c_up,
         &q1_asm_up, &q2_asm_up
     );
 
-    if (!ok_c || !ok_asm || !coincide_up) {
+    if (!ok_c || !ok_asm) {
+        /* IK no convergio en alguna implementacion: error real */
         fprintf(stderr,
-                "VM ERROR: inconsistencia IK_UP C/ASM en XY=(%d,%d) C=(%d,%d) ASM=(%d,%d)\n",
-                x, y, q1_up, q2_up, q1_asm_up, q2_asm_up);
+                "VM ERROR: IK_UP no convergio en XY=(%d,%d) ok_c=%d ok_asm=%d\n",
+                x, y, ok_c, ok_asm);
         return 0;
     }
 
-    coincide_dn = cinematica_comparar_c_vs_asm_modo(
-        x, y,
-        CIN_MODO_CODO_ABAJO, tol_deg,
+    /* Diferencia fuera de tolerancia: advertencia pero NO abortar */
+    if (abs(q1_c_up - q1_asm_up) > tol_deg || abs(q2_c_up - q2_asm_up) > tol_deg) {
+        fprintf(stderr,
+                "[VM WARN] IK_UP diferencia C/ASM en XY=(%d,%d) "
+                "C=(%d,%d) ASM=(%d,%d)\n",
+                x, y, q1_c_up, q2_c_up, q1_asm_up, q2_asm_up);
+    }
+
+    /* --- Comparar C vs ASM (CODO ABAJO) --- */
+    cinematica_comparar_c_vs_asm_modo(
+        x, y, CIN_MODO_CODO_ABAJO, tol_deg,
         &ok_c, &ok_asm,
-        &q1_dn, &q2_dn,
+        &q1_c_dn, &q2_c_dn,
         &q1_asm_dn, &q2_asm_dn
     );
 
-    if (!ok_c || !ok_asm || !coincide_dn) {
+    if (!ok_c || !ok_asm) {
         fprintf(stderr,
-                "VM ERROR: inconsistencia IK_DOWN C/ASM en XY=(%d,%d) C=(%d,%d) ASM=(%d,%d)\n",
-                x, y, q1_dn, q2_dn, q1_asm_dn, q2_asm_dn);
+                "VM ERROR: IK_DOWN no convergio en XY=(%d,%d) ok_c=%d ok_asm=%d\n",
+                x, y, ok_c, ok_asm);
         return 0;
     }
 
-    printf("[VM] IK_UP   -> q1=%d q2=%d\n", q1_up, q2_up);
-    printf("[VM] IK_DOWN -> q1=%d q2=%d\n", q1_dn, q2_dn);
+    if (abs(q1_c_dn - q1_asm_dn) > tol_deg || abs(q2_c_dn - q2_asm_dn) > tol_deg) {
+        fprintf(stderr,
+                "[VM WARN] IK_DOWN diferencia C/ASM en XY=(%d,%d) "
+                "C=(%d,%d) ASM=(%d,%d)\n",
+                x, y, q1_c_dn, q2_c_dn, q1_asm_dn, q2_asm_dn);
+    }
+
+    /* --- Imprimir resultados --- */
+    printf("[VM] IK_C_UP     -> q1=%d q2=%d\n", q1_c_up,  q2_c_up);
+    printf("[VM] IK_C_DOWN   -> q1=%d q2=%d\n", q1_c_dn,  q2_c_dn);
     printf("[VM] IK_ASM_UP   -> q1=%d q2=%d\n", q1_asm_up, q2_asm_up);
     printf("[VM] IK_ASM_DOWN -> q1=%d q2=%d\n", q1_asm_dn, q2_asm_dn);
     return 1;

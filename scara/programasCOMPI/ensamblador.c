@@ -188,10 +188,15 @@ int ensamblador_leer(const char* ruta, Instruccion* programa, int* longitud) {
     if (!f) return 1;
 
     char linea[512];
+    char linea_orig[512];   /* copia intacta para buscar strings entre comillas */
     int len = 0;
     while (fgets(linea, sizeof(linea), f)) {
         char* p = trim(linea);
         if (*p == '\0' || *p == '#') continue;
+
+        /* Guardar copia ANTES de que strtok mutile la cadena */
+        strncpy(linea_orig, p, sizeof(linea_orig) - 1);
+        linea_orig[sizeof(linea_orig) - 1] = '\0';
 
         char* token = strtok(p, " \t\n");
         if (!token) continue;
@@ -223,7 +228,7 @@ int ensamblador_leer(const char* ruta, Instruccion* programa, int* longitud) {
             ins.arg1 = atoi(strtok(NULL, " \t\n"));
         } else if (strcmp(token, "PRINT") == 0) {
             ins.opcode = OP_PRINT;
-            char* msg = leer_cadena_entre_comillas(p);
+            char* msg = leer_cadena_entre_comillas(linea_orig);
             if (!msg) {
                 fclose(f);
                 return 1;

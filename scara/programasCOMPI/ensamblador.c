@@ -273,7 +273,57 @@ traza_done:
 }
 
 /* ═══════════════════════════════════════════════════════════════
- * SECCIÓN 2 — Helpers para emitir arrays de datos en NASM
+ * SECCIÓN 2 — Emitir datos de traza como C puro
+ *
+ * Se abandona el puente ASM→C porque en Windows x64 las relocaciones
+ * RIP-relative de 32 bits en objetos NASM enlazados con GCC pueden
+ * apuntar a direcciones incorrectas cuando la imagen supera 2 GB de
+ * espacio de direcciones virtual.  Emitir los arrays directamente en
+ * el _vis.c elimina el problema de ABI y relocation por completo.
+ * ═══════════════════════════════════════════════════════════════ */
+
+static void emit_array_c(FILE* f, const char* nombre, int* arr, int n) {
+    fprintf(f, "static const int %s[%d] = {\n    ", nombre, n);
+    for (int i = 0; i < n; i++) {
+        fprintf(f, "%d", arr[i]);
+        if (i < n - 1) {
+            fprintf(f, ",");
+            if ((i + 1) % 16 == 0)
+                fprintf(f, "\n    ");
+            else
+                fprintf(f, " ");
+        }
+    }
+    fprintf(f, "\n};\n");
+}
+
+/* Escribe en `f` las declaraciones C de todos los arrays de traza. */
+void generar_traza_c(FILE* f) {
+    int tmp[MAX_TRAZA];
+
+    fprintf(f, "/* --- Traza generada por el compilador SCARA --- */\n");
+    fprintf(f, "static const int TRAZA_LEN = %d;\n\n", traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].x;
+    emit_array_c(f, "traza_x", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].y;
+    emit_array_c(f, "traza_y", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].z;
+    emit_array_c(f, "traza_z", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].pinza;
+    emit_array_c(f, "traza_pinza", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].velocidad;
+    emit_array_c(f, "traza_vel", tmp, traza_len);
+
+    fprintf(f, "\n");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 3 — Emitir datos de traza como NASM (para el .asm)
  * ═══════════════════════════════════════════════════════════════ */
 
 static void emit_array_dd(FILE* f, const char* nombre, int* arr, int n) {
@@ -281,8 +331,7 @@ static void emit_array_dd(FILE* f, const char* nombre, int* arr, int n) {
     for (int i = 0; i < n; i++) {
         fprintf(f, "%d", arr[i]);
         if (i < n - 1) {
-            fprintf(f, ",");
-            /* Salto de línea cada 16 valores para legibilidad */
+            fprintf(f, ", ");
             if ((i + 1) % 16 == 0)
                 fprintf(f, "\\\n                    ");
         }
@@ -290,10 +339,17 @@ static void emit_array_dd(FILE* f, const char* nombre, int* arr, int n) {
     fprintf(f, "\n");
 }
 
-static void emit_traza_data(FILE* f) {
+static void emit_asm_sdl2(FILE* f) {
     int tmp[MAX_TRAZA];
 
-    fprintf(f, "    traza_len  dd  %d\n", traza_len);
+    fprintf(f,
+        "; ============================================================\n"
+        "; Generado por compilador SCARA — datos de traza NASM\n"
+        "; Los datos se exportan como simbolos C para el visualizador SDL2.\n"
+        "; ============================================================\n\n"
+        "default rel\n\n"
+        "section .data\n\n"
+        "    traza_len  dd  %d\n", traza_len);
 
     for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].x;
     emit_array_dd(f, "traza_x", tmp, traza_len);
@@ -309,89 +365,12 @@ static void emit_traza_data(FILE* f) {
 
     for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].velocidad;
     emit_array_dd(f, "traza_vel", tmp, traza_len);
+
+    fprintf(f, "\n; (El visualizador SDL2 usa los datos del _vis.c generado)\n");
 }
 
 /* ═══════════════════════════════════════════════════════════════
- * SECCIÓN 3 — Backend ASCII
- *
- * Emite NASM x64 completo que al ejecutarse muestra la animación
- * HUD 80×30 en consola usando syscalls de Windows (kernel32).
- * Sin dependencias externas — solo kernel32.dll del sistema.
- *
- * Enlazar con:
- *   ld programa.obj -o programa.exe -lkernel32
- *      -L"C:/msys64/mingw64/lib" --subsystem console
- * ═══════════════════════════════════════════════════════════════ */
-
-static void emit_sdl2(FILE* f) {
-    fprintf(f,
-        "; ============================================================\n"
-        "; Generado por compilador SCARA — backend SDL2\n"
-        "; Datos de traza exportados como símbolos enlazables.\n"
-        "; El visualizador SDL2 llama traza_get_* para obtener estados.\n"
-        "; Ensamblar: nasm -f win64 programa.asm -o programa.obj\n"
-        "; Enlazar:   gcc visualizador.c programa.obj -lSDL2 -o programa.exe\n"
-        "; ============================================================\n\n"
-        "default rel\n\n"
-        "section .data\n\n"
-    );
-
-    emit_traza_data(f);
-
-    fprintf(f,
-        "\nsection .text\n\n"
-        "global traza_get_len\n"
-        "global traza_get_x\n"
-        "global traza_get_y\n"
-        "global traza_get_z\n"
-        "global traza_get_pinza\n"
-        "global traza_get_vel\n\n"
-
-        "; int traza_get_len(void)\n"
-        "traza_get_len:\n"
-        "    lea  rax, [rel traza_len]\n"
-        "    mov  eax, dword [rax]\n"
-        "    ret\n\n"
-
-        "; int traza_get_x(int idx)     [idx en ecx — Windows x64 ABI]\n"
-        "traza_get_x:\n"
-        "    movsxd rcx, ecx\n"
-        "    lea  rax, [rel traza_x]\n"
-        "    mov  eax, dword [rax + rcx*4]\n"
-        "    ret\n\n"
-
-        "traza_get_y:\n"
-        "    movsxd rcx, ecx\n"
-        "    lea  rax, [rel traza_y]\n"
-        "    mov  eax, dword [rax + rcx*4]\n"
-        "    ret\n\n"
-
-        "traza_get_z:\n"
-        "    movsxd rcx, ecx\n"
-        "    lea  rax, [rel traza_z]\n"
-        "    mov  eax, dword [rax + rcx*4]\n"
-        "    ret\n\n"
-
-        "traza_get_pinza:\n"
-        "    movsxd rcx, ecx\n"
-        "    lea  rax, [rel traza_pinza]\n"
-        "    mov  eax, dword [rax + rcx*4]\n"
-        "    ret\n\n"
-
-        "traza_get_vel:\n"
-        "    movsxd rcx, ecx\n"
-        "    lea  rax, [rel traza_vel]\n"
-        "    mov  eax, dword [rax + rcx*4]\n"
-        "    ret\n"
-    );
-}
-
-/* ═══════════════════════════════════════════════════════════════
- * SECCIÓN 5 — Punto de entrada público
- * ═══════════════════════════════════════════════════════════════ */
-
-/* ═══════════════════════════════════════════════════════════════
- * SECCIÓN 3 — Punto de entrada público
+ * SECCIÓN 4 — Punto de entrada público
  * ═══════════════════════════════════════════════════════════════ */
 
 int generar_ensamblador(const Instruccion* programa, int longitud,
@@ -404,12 +383,12 @@ int generar_ensamblador(const Instruccion* programa, int longitud,
     }
     printf("[GEN] Traza construida: %d estados\n", n);
 
-    /* 2. Abrir archivo de salida */
+    /* 2. Abrir archivo de salida (.asm) */
     FILE* f = fopen(ruta_salida, "w");
     if (!f) return 1;
 
-    /* 3. Emitir NASM para SDL2 */
-    emit_sdl2(f);
+    /* 3. Emitir NASM con los datos */
+    emit_asm_sdl2(f);
 
     fclose(f);
     return 0;

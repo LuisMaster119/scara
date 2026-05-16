@@ -172,3 +172,14 @@ int cinematica_comparar_c_vs_asm(int x, int y, int tolerancia_deg,
         ok_c, ok_asm, q1_c, q2_c, q1_asm, q2_asm
     );
 }
+
+// Stubs para versiones ASM (no disponibles)
+int cinematica_ik_xy_modo_asm(int x, int y, int modo, int* q1_deg, int* q2_deg) {
+    // Stub: versión ASM no disponible
+    return 0;
+}
+
+int cinematica_ik_xy_asm(int x, int y, int* q1_deg, int* q2_deg) {
+    // Stub: versión ASM no disponible
+    return 0;
+}

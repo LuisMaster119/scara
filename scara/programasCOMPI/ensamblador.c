@@ -1,355 +1,1102 @@
+/*
+ * ensamblador.c
+ * Fase 6 — Generación de código final en NASM x64 real.
+ *
+ * Dos backends:
+ *   OUTPUT_ASCII  →  animación HUD en consola via WriteConsoleA (kernel32)
+ *   OUTPUT_SDL2   →  animación 2.5D via SDL2
+ *
+ * Ensamblar:  nasm -f win64 programa.asm -o programa.obj
+ * Enlazar:    ld programa.obj -o programa.exe -lkernel32          (ascii)
+ *             ld programa.obj -o programa.exe -lSDL2 -lmingw32    (sdl2)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <math.h>
 #include "ensamblador.h"
+#include "cinematica.h"
 
-static const char* operacion_a_texto(Opcode op) {
-    switch (op) {
-        case OP_MOVE: return "MOVE";
-        case OP_MOVEJ: return "MOVEJ";
-        case OP_APPROACH: return "APPROACH";
-        case OP_DEPART: return "DEPART";
-        case OP_HOME: return "HOME";
-        case OP_OPEN: return "OPEN";
-        case OP_CLOSE: return "CLOSE";
-        case OP_SPEED: return "SPEED";
-        case OP_WAIT: return "WAIT";
-        case OP_PRINT: return "PRINT";
-        case OP_WHILE: return "WHILE";
-        case OP_END_WHILE: return "END_WHILE";
-        case OP_IF: return "IF";
-        case OP_ELSE: return "ELSE";
-        case OP_END_IF: return "END_IF";
-        case OP_REPEAT: return "REPEAT";
-        case OP_END_REPEAT: return "END_REPEAT";
-        case OP_VAR: return "VAR";
-        case OP_POINT: return "POINT";
-        case OP_ASSIGN: return "ASSIGN";
-        case OP_HALT: return "HALT";
-        default: return "UNKNOWN";
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 1 — Evaluador de bytecode para construir la traza
+ *
+ * Ejecutamos el bytecode optimizado directamente en C para obtener
+ * la secuencia de estados (x,y,z,pinza,vel) que luego se incrustan
+ * como datos estáticos en el .asm generado.
+ * ═══════════════════════════════════════════════════════════════ */
+
+#define MAX_TRAZA          4096
+#define MAX_VARS           128
+#define MAX_CODE           256
+#define APPROACH_CLEARANCE 50
+
+typedef struct { int x, y, z, pinza, velocidad; } Estado;
+typedef struct { char nombre[64]; int valor; int usado; } Var;
+
+static Estado traza[MAX_TRAZA];
+static int    traza_len = 0;
+
+static Var    vars[MAX_VARS];
+static int    pos_x = 0, pos_y = 0, pos_z = 0;
+static int    pinza  = 1;
+static int    vel    = 100;
+
+static void traza_push(void) {
+    if (traza_len >= MAX_TRAZA) return;
+    traza[traza_len].x         = pos_x;
+    traza[traza_len].y         = pos_y;
+    traza[traza_len].z         = pos_z;
+    traza[traza_len].pinza     = pinza;
+    traza[traza_len].velocidad = vel;
+    traza_len++;
+}
+
+static int pasos_mov(void) {
+    int p = 11 - vel / 10;
+    if (p < 3)  p = 3;
+    if (p > 10) p = 10;
+    return p;
+}
+
+static void mover_hacia(int tx, int ty, int tz, int pasos) {
+    int x0 = pos_x, y0 = pos_y, z0 = pos_z;
+    for (int i = 1; i <= pasos; i++) {
+        pos_x = x0 + ((tx - x0) * i) / pasos;
+        pos_y = y0 + ((ty - y0) * i) / pasos;
+        pos_z = z0 + ((tz - z0) * i) / pasos;
+        traza_push();
     }
 }
 
-static int es_numero(const char* token) {
-    if (!token || *token == '\0') return 0;
-    if (*token == '-' || *token == '+') token++;
-    if (!*token) return 0;
-    while (*token) {
-        if (!isdigit((unsigned char)*token)) return 0;
-        token++;
-    }
-    return 1;
-}
-
-static void escribir_operando(FILE* f, const char* nombre, int valor, int es_var) {
-    if (es_var) {
-        fprintf(f, "%s", nombre);
-    } else {
-        fprintf(f, "%d", valor);
-    }
-}
-
-static int parsear_operando(const char* token, int* out_valor, int* out_es_var, char* out_nombre) {
-    if (es_numero(token)) {
-        *out_valor = atoi(token);
-        *out_es_var = 0;
-        out_nombre[0] = '\0';
-        return 1;
-    }
-    *out_valor = 0;
-    *out_es_var = 1;
-    strcpy(out_nombre, token);
-    return 1;
-}
-
-static const char* operador_texto(TipoToken tipo) {
-    switch (tipo) {
-        case TOK_LESS: return "<";
-        case TOK_GREATER: return ">";
-        case TOK_EQUAL: return "==";
-        default: return "?";
-    }
-}
-
-static int operador_tipo(const char* token) {
-    if (strcmp(token, "<") == 0) return TOK_LESS;
-    if (strcmp(token, ">") == 0) return TOK_GREATER;
-    if (strcmp(token, "==") == 0) return TOK_EQUAL;
+static int var_buscar(const char* n) {
+    for (int i = 0; i < MAX_VARS; i++)
+        if (vars[i].usado && strcmp(vars[i].nombre, n) == 0) return i;
     return -1;
 }
 
+static int var_crear(const char* n, int v) {
+    int idx = var_buscar(n);
+    if (idx >= 0) { vars[idx].valor = v; return idx; }
+    for (int i = 0; i < MAX_VARS; i++) {
+        if (!vars[i].usado) {
+            vars[i].usado = 1;
+            strcpy(vars[i].nombre, n);
+            vars[i].valor = v;
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int operando_val(const Instruccion* ins, int es_izq) {
+    if (es_izq) {
+        if (ins->flags & INS_F_ARG1_VAR) {
+            int idx = var_buscar(ins->sval2);
+            return idx >= 0 ? vars[idx].valor : 0;
+        }
+        return ins->arg1;
+    }
+    if (ins->flags & INS_F_ARG3_VAR) {
+        int idx = var_buscar(ins->sval3);
+        return idx >= 0 ? vars[idx].valor : 0;
+    }
+    return ins->arg3;
+}
+
+static int cond_val(const Instruccion* ins, int es_izq) {
+    if (es_izq) {
+        if (ins->flags & INS_F_ARG1_VAR) {
+            int idx = var_buscar(ins->sval);
+            return idx >= 0 ? vars[idx].valor : 0;
+        }
+        return ins->arg1;
+    }
+    if (ins->flags & INS_F_ARG3_VAR) {
+        int idx = var_buscar(ins->sval2);
+        return idx >= 0 ? vars[idx].valor : 0;
+    }
+    return ins->arg3;
+}
+
+static int evaluar_cond(const Instruccion* ins) {
+    int l = cond_val(ins, 1), r = cond_val(ins, 0);
+    switch (ins->arg2) {
+        case TOK_LESS:    return l < r;
+        case TOK_GREATER: return l > r;
+        case TOK_EQUAL:   return l == r;
+        default:          return 0;
+    }
+}
+
+/* Pre-calcular saltos igual que la VM original */
+typedef struct { int if_idx; int else_idx; } IfFr;
+static int jmp_end_while[MAX_CODE], jmp_back_while[MAX_CODE];
+static int jmp_if_false[MAX_CODE],  jmp_else_end[MAX_CODE];
+static int jmp_end_rep[MAX_CODE],   jmp_back_rep[MAX_CODE];
+
+static int precalcular_saltos(const Instruccion* prog, int len) {
+    int ws[MAX_CODE], rs[MAX_CODE]; IfFr is[MAX_CODE];
+    int wt = -1, rt = -1, it = -1;
+    for (int i = 0; i < len; i++) {
+        jmp_end_while[i] = jmp_back_while[i] = jmp_if_false[i] =
+        jmp_else_end[i]  = jmp_end_rep[i]    = jmp_back_rep[i] = -1;
+    }
+    for (int pc = 0; pc < len; pc++) {
+        switch (prog[pc].opcode) {
+            case OP_WHILE:
+                ws[++wt] = pc; break;
+            case OP_END_WHILE: {
+                int i = ws[wt--];
+                jmp_end_while[i] = pc; jmp_back_while[pc] = i; break;
+            }
+            case OP_REPEAT:
+                rs[++rt] = pc; break;
+            case OP_END_REPEAT: {
+                int i = rs[rt--];
+                jmp_end_rep[i] = pc; jmp_back_rep[pc] = i; break;
+            }
+            case OP_IF:
+                is[++it].if_idx = pc; is[it].else_idx = -1; break;
+            case OP_ELSE:
+                is[it].else_idx = pc;
+                jmp_if_false[is[it].if_idx] = pc + 1; break;
+            case OP_END_IF: {
+                IfFr fr = is[it--];
+                if (fr.else_idx >= 0) jmp_else_end[fr.else_idx] = pc + 1;
+                else                  jmp_if_false[fr.if_idx]   = pc + 1;
+                break;
+            }
+            default: break;
+        }
+    }
+    return (wt < 0 && rt < 0 && it < 0) ? 1 : 0;
+}
+
+static int construir_traza(const Instruccion* prog, int len) {
+    memset(vars, 0, sizeof(vars));
+    pos_x = pos_y = pos_z = 0;
+    pinza = 1; vel = 100; traza_len = 0;
+    traza_push();  /* estado HOME inicial */
+
+    if (!precalcular_saltos(prog, len)) return 0;
+
+    int rep_rest[MAX_CODE];
+    for (int i = 0; i < MAX_CODE; i++) rep_rest[i] = -1;
+
+    int pc = 0;
+    while (pc >= 0 && pc < len) {
+        const Instruccion* ins = &prog[pc];
+        switch (ins->opcode) {
+
+            case OP_VAR:   var_crear(ins->sval, ins->arg1); break;
+            case OP_POINT: break;
+
+            case OP_ASSIGN: {
+                int idx = var_buscar(ins->sval);
+                if (idx < 0) break;
+                int lhs = operando_val(ins, 1);
+                if      (ins->arg2 ==  1) vars[idx].valor = lhs + operando_val(ins, 0);
+                else if (ins->arg2 == -1) vars[idx].valor = lhs - operando_val(ins, 0);
+                else                      vars[idx].valor = lhs;
+                break;
+            }
+
+            case OP_SPEED:  vel = ins->arg1; traza_push(); break;
+            case OP_HOME:   pos_x = pos_y = pos_z = 0; traza_push(); break;
+            case OP_OPEN:   pinza = 1; traza_push(); break;
+            case OP_CLOSE:  pinza = 0; traza_push(); break;
+
+            case OP_MOVE:
+                mover_hacia(ins->arg1, ins->arg2, ins->arg3, pasos_mov());
+                break;
+
+            case OP_MOVEJ: {
+                int p  = pasos_mov();
+                int zs = (pos_z > ins->arg3 ? pos_z : ins->arg3) + APPROACH_CLEARANCE;
+                mover_hacia(pos_x,     pos_y,     zs,          p / 2);
+                mover_hacia(ins->arg1, ins->arg2, zs,          p);
+                mover_hacia(ins->arg1, ins->arg2, ins->arg3,   p / 2);
+                break;
+            }
+
+            case OP_APPROACH: {
+                int zs = ins->arg3 + APPROACH_CLEARANCE;
+                mover_hacia(ins->arg1, ins->arg2, zs,        pasos_mov());
+                mover_hacia(ins->arg1, ins->arg2, ins->arg3, pasos_mov());
+                break;
+            }
+
+            case OP_DEPART:
+                pos_z += ins->arg1; traza_push(); break;
+
+            case OP_WAIT:
+                for (int w = 0; w < ins->arg1 * 3; w++) traza_push();
+                break;
+
+            case OP_PRINT: break;
+
+            case OP_WHILE:
+                if (!evaluar_cond(ins)) { pc = jmp_end_while[pc] + 1; continue; }
+                break;
+            case OP_END_WHILE:
+                pc = jmp_back_while[pc]; continue;
+
+            case OP_IF:
+                if (!evaluar_cond(ins)) { pc = jmp_if_false[pc]; continue; }
+                break;
+            case OP_ELSE:  pc = jmp_else_end[pc]; continue;
+            case OP_END_IF: break;
+
+            case OP_REPEAT:
+                if (rep_rest[pc] < 0)   rep_rest[pc] = ins->arg1;
+                if (rep_rest[pc] <= 0) {
+                    rep_rest[pc] = -1;
+                    pc = jmp_end_rep[pc] + 1; continue;
+                }
+                break;
+            case OP_END_REPEAT:
+                rep_rest[jmp_back_rep[pc]]--;
+                if (rep_rest[jmp_back_rep[pc]] > 0) {
+                    pc = jmp_back_rep[pc] + 1; continue;
+                }
+                rep_rest[jmp_back_rep[pc]] = -1;
+                break;
+
+            case OP_HALT: goto traza_done;
+            default: break;
+        }
+        pc++;
+    }
+traza_done:
+    return traza_len;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 2 — Helpers para emitir arrays de datos en NASM
+ * ═══════════════════════════════════════════════════════════════ */
+
+static void emit_array_dd(FILE* f, const char* nombre, int* arr, int n) {
+    fprintf(f, "    %-14s dd  ", nombre);
+    for (int i = 0; i < n; i++) {
+        fprintf(f, "%d", arr[i]);
+        if (i < n - 1) {
+            fprintf(f, ",");
+            /* Salto de línea cada 16 valores para legibilidad */
+            if ((i + 1) % 16 == 0)
+                fprintf(f, "\\\n                    ");
+        }
+    }
+    fprintf(f, "\n");
+}
+
+static void emit_traza_data(FILE* f) {
+    int tmp[MAX_TRAZA];
+
+    fprintf(f, "    traza_len  dd  %d\n", traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].x;
+    emit_array_dd(f, "traza_x", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].y;
+    emit_array_dd(f, "traza_y", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].z;
+    emit_array_dd(f, "traza_z", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].pinza;
+    emit_array_dd(f, "traza_pinza", tmp, traza_len);
+
+    for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].velocidad;
+    emit_array_dd(f, "traza_vel", tmp, traza_len);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 3 — Backend ASCII
+ *
+ * Emite NASM x64 completo que al ejecutarse muestra la animación
+ * HUD 80×30 en consola usando syscalls de Windows (kernel32).
+ * Sin dependencias externas — solo kernel32.dll del sistema.
+ *
+ * Enlazar con:
+ *   ld programa.obj -o programa.exe -lkernel32
+ *      -L"C:/msys64/mingw64/lib" --subsystem console
+ * ═══════════════════════════════════════════════════════════════ */
+
+static void emit_ascii(FILE* f) {
+
+    /* ── Cabecera y directivas ── */
+    fprintf(f,
+        "; ============================================================\n"
+        "; Generado por compilador SCARA — backend ASCII\n"
+        "; Ensamblar: nasm -f win64 programa.asm -o programa.obj\n"
+        "; Enlazar:   ld programa.obj -o programa.exe -lkernel32\n"
+        ";            -L\"C:/msys64/mingw64/lib\" --subsystem console\n"
+        "; ============================================================\n\n"
+        "default rel\n\n"
+        "extern GetStdHandle\n"
+        "extern WriteConsoleA\n"
+        "extern SetConsoleCursorPosition\n"
+        "extern SetConsoleTextAttribute\n"
+        "extern Sleep\n"
+        "extern ExitProcess\n\n"
+    );
+
+    /* ── Sección de datos ── */
+    fprintf(f, "section .data\n\n");
+    fprintf(f, "    ; --- Traza de movimientos generada por el compilador ---\n");
+    emit_traza_data(f);
+
+    fprintf(f,
+        "\n"
+        "    ; --- Constantes del brazo ---\n"
+        "    L1          dd  200\n"
+        "    L2          dd  150\n\n"
+
+        "    ; --- Strings UI ---\n"
+        "    ; Box-drawing CP437\n"
+        "    ch_hline    db  0xC4, 0\n"  /* ─ */
+        "    ch_vline    db  0xB3, 0\n"  /* │ */
+        "    ch_tl       db  0xDA, 0\n"  /* ┌ */
+        "    ch_tr       db  0xBF, 0\n"  /* ┐ */
+        "    ch_bl       db  0xC0, 0\n"  /* └ */
+        "    ch_br       db  0xD9, 0\n"  /* ┘ */
+        "    ch_ttee     db  0xC2, 0\n"  /* ┬ */
+        "    ch_btee     db  0xC1, 0\n"  /* ┴ */
+        "    ch_dot      db  '.', 0\n"
+        "    ch_seg1     db  0xDB, 0\n"  /* █ */
+        "    ch_seg2     db  0xB2, 0\n"  /* ▓ */
+        "    ch_base     db  '()', 0\n"
+        "    ch_elbow    db  'O', 0\n"
+        "    ch_efopen   db  '*', 0\n"
+        "    ch_efclose  db  'X', 0\n"
+        "    ch_space    db  ' ', 0\n"
+        "    ch_fill     db  0xDB, 0\n"  /* █ barra progreso */
+        "    ch_empty    db  0xB0, 0\n"  /* ░ barra progreso */
+        "    ch_newline  db  0x0D, 0x0A, 0\n\n"
+
+        "    str_title   db  ' SCARA VM', 0\n"
+        "    str_sep     db  ' --------', 0\n"
+        "    str_lx      db  ' X:', 0\n"
+        "    str_ly      db  ' Y:', 0\n"
+        "    str_lz      db  ' Z:', 0\n"
+        "    str_lvel    db  ' vel:', 0\n"
+        "    str_lpct    db  '%', 0\n"
+        "    str_lopen   db  ' [OPEN ]', 0\n"
+        "    str_lclose  db  ' [CLOS ]', 0\n"
+        "    str_barl    db  ' [', 0\n"
+        "    str_barr    db  ']', 0\n\n"
+
+        "    ; Buffer para conversión int→string\n"
+        "    num_buf     db  20 dup(0)\n\n"
+
+        "    ; Handle de stdout (rellenado en runtime)\n"
+        "    hConsole    dq  0\n\n"
+    );
+
+    /* ── Sección BSS ── */
+    fprintf(f,
+        "section .bss\n"
+        "    written     resq  1\n\n"
+    );
+
+    /* ══════════════════════════════════════
+     * Sección .text — funciones auxiliares
+     * ══════════════════════════════════════ */
+    fprintf(f, "section .text\n\n");
+
+    /* ── itoa_dec ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; itoa_dec: entero con signo en ecx → string en [num_buf]\n"
+        ";   modifica: rax, rbx, rcx, rdx\n"
+        "; ----------------------------------------------------------\n"
+        "itoa_dec:\n"
+        "    push rsi\n"
+        "    push rdi\n"
+        "    lea  rdi, [rel num_buf]\n"
+        "    lea  rsi, [rel num_buf]\n"
+        "    mov  eax, ecx\n"
+        "    test eax, eax\n"
+        "    jge  .ita_pos\n"
+        "    neg  eax\n"
+        "    mov  byte [rdi], '-'\n"
+        "    inc  rdi\n"
+        ".ita_pos:\n"
+        "    lea  rbx, [rdi + 18]\n"   /* fin de un buffer temporal en la pila */
+        "    mov  byte [rbx], 0\n"
+        "    dec  rbx\n"
+        "    mov  ecx, 10\n"
+        ".ita_loop:\n"
+        "    xor  edx, edx\n"
+        "    div  ecx\n"
+        "    add  dl, '0'\n"
+        "    mov  [rbx], dl\n"
+        "    dec  rbx\n"
+        "    test eax, eax\n"
+        "    jnz  .ita_loop\n"
+        "    inc  rbx\n"
+        ".ita_copy:\n"
+        "    mov  al, [rbx]\n"
+        "    test al, al\n"
+        "    jz   .ita_done\n"
+        "    mov  [rdi], al\n"
+        "    inc  rbx\n"
+        "    inc  rdi\n"
+        "    jmp  .ita_copy\n"
+        ".ita_done:\n"
+        "    mov  byte [rdi], 0\n"
+        "    pop  rdi\n"
+        "    pop  rsi\n"
+        "    ret\n\n"
+    );
+
+    /* ── write_str ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; write_str: escribe string null-terminated apuntado por rsi\n"
+        "; ----------------------------------------------------------\n"
+        "write_str:\n"
+        "    push rbx\n"
+        "    ; calcular longitud\n"
+        "    xor  ebx, ebx\n"
+        ".ws_len:\n"
+        "    cmp  byte [rsi + rbx], 0\n"
+        "    je   .ws_go\n"
+        "    inc  ebx\n"
+        "    jmp  .ws_len\n"
+        ".ws_go:\n"
+        "    test ebx, ebx\n"
+        "    jz   .ws_done\n"
+        "    sub  rsp, 40\n"
+        "    mov  rcx, [rel hConsole]\n"
+        "    mov  rdx, rsi\n"
+        "    mov  r8d, ebx\n"
+        "    lea  r9,  [rel written]\n"
+        "    mov  qword [rsp+32], 0\n"
+        "    call WriteConsoleA\n"
+        "    add  rsp, 40\n"
+        ".ws_done:\n"
+        "    pop  rbx\n"
+        "    ret\n\n"
+    );
+
+    /* ── set_cursor ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; set_cursor: mueve cursor a (col=ecx, row=edx)\n"
+        "; ----------------------------------------------------------\n"
+        "set_cursor:\n"
+        "    push rax\n"
+        "    sub  rsp, 40\n"
+        "    movzx eax, cx\n"
+        "    movzx r10d, dx\n"
+        "    shl  r10d, 16\n"
+        "    or   eax, r10d\n"
+        "    mov  rcx, [rel hConsole]\n"
+        "    mov  edx, eax\n"
+        "    call SetConsoleCursorPosition\n"
+        "    add  rsp, 40\n"
+        "    pop  rax\n"
+        "    ret\n\n"
+    );
+
+    /* ── draw_hline ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; draw_hline: dibuja 'count' copias de char en fila\n"
+        ";   ecx=col_inicio, edx=row, r8d=count, rsi=ptr_char\n"
+        "; ----------------------------------------------------------\n"
+        "draw_hline:\n"
+        "    push r12\n"
+        "    push r13\n"
+        "    push r14\n"
+        "    push rsi\n"
+        "    mov  r12d, ecx\n"
+        "    mov  r13d, edx\n"
+        "    mov  r14d, r8d\n"
+        ".dhl_loop:\n"
+        "    test r14d, r14d\n"
+        "    jz   .dhl_done\n"
+        "    mov  ecx, r12d\n"
+        "    mov  edx, r13d\n"
+        "    call set_cursor\n"
+        "    mov  rsi, [rsp]        ; restaurar ptr_char\n"
+        "    call write_str\n"
+        "    inc  r12d\n"
+        "    dec  r14d\n"
+        "    jmp  .dhl_loop\n"
+        ".dhl_done:\n"
+        "    pop  rsi\n"
+        "    pop  r14\n"
+        "    pop  r13\n"
+        "    pop  r12\n"
+        "    ret\n\n"
+    );
+
+    /* ── draw_vline ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; draw_vline: dibuja 'count' copias de char en columna\n"
+        ";   ecx=col, edx=row_inicio, r8d=count, rsi=ptr_char\n"
+        "; ----------------------------------------------------------\n"
+        "draw_vline:\n"
+        "    push r12\n"
+        "    push r13\n"
+        "    push r14\n"
+        "    push rsi\n"
+        "    mov  r12d, ecx\n"
+        "    mov  r13d, edx\n"
+        "    mov  r14d, r8d\n"
+        ".dvl_loop:\n"
+        "    test r14d, r14d\n"
+        "    jz   .dvl_done\n"
+        "    mov  ecx, r12d\n"
+        "    mov  edx, r13d\n"
+        "    call set_cursor\n"
+        "    mov  rsi, [rsp]\n"
+        "    call write_str\n"
+        "    inc  r13d\n"
+        "    dec  r14d\n"
+        "    jmp  .dvl_loop\n"
+        ".dvl_done:\n"
+        "    pop  rsi\n"
+        "    pop  r14\n"
+        "    pop  r13\n"
+        "    pop  r12\n"
+        "    ret\n\n"
+    );
+
+    /* ── iso_project ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; iso_project: proyección isométrica mundo→pantalla\n"
+        ";   entrada: ecx=wx, edx=wy, r8d=wz\n"
+        ";   salida : eax=sx (col), edx=sy (row)\n"
+        ";   Fórmula:\n"
+        ";     sx = 50 + (wx-wy)*70/100\n"
+        ";     sy = 24 - ((wx+wy)*32/100 - wz*85/100)\n"
+        ";   Origen (0,0,0) → pantalla (50,24)\n"
+        "; ----------------------------------------------------------\n"
+        "iso_project:\n"
+        "    push rbx\n"
+        "    push r9\n"
+        "    ; ── sx ──\n"
+        "    mov  eax, ecx\n"
+        "    sub  eax, edx          ; wx - wy\n"
+        "    imul eax, 70\n"
+        "    cdq\n"
+        "    mov  ebx, 100\n"
+        "    idiv ebx\n"
+        "    add  eax, 50\n"
+        "    mov  r9d, eax          ; r9d = sx (temporal)\n"
+        "    ; ── sy parte 1: (wx+wy)*32/100 ──\n"
+        "    mov  eax, ecx\n"
+        "    add  eax, edx\n"
+        "    imul eax, 32\n"
+        "    cdq\n"
+        "    idiv ebx\n"
+        "    push rax               ; guardar sum_part\n"
+        "    ; ── sy parte 2: wz*85/100 ──\n"
+        "    mov  eax, r8d\n"
+        "    imul eax, 85\n"
+        "    cdq\n"
+        "    idiv ebx\n"
+        "    pop  rbx               ; sum_part\n"
+        "    sub  rbx, rax          ; sum_part - wz_part\n"
+        "    mov  eax, 24\n"
+        "    sub  eax, ebx          ; sy = 24 - ...\n"
+        "    mov  edx, eax          ; retorno: edx = sy\n"
+        "    mov  eax, r9d          ; retorno: eax = sx\n"
+        "    pop  r9\n"
+        "    pop  rbx\n"
+        "    ret\n\n"
+    );
+
+    /* ── draw_segment (Bresenham simplificado) ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; draw_segment: línea entre dos puntos de pantalla\n"
+        ";   entrada: r12d=x0,r13d=y0,r14d=x1,r15d=y1, rsi=ptr_char\n"
+        ";   preserva: rsi\n"
+        "; ----------------------------------------------------------\n"
+        "draw_segment:\n"
+        "    push rbx\n"
+        "    push r9\n"
+        "    push r10\n"
+        "    push r11\n"
+        "    push rsi\n"
+        "    ; Copias de trabajo en pila para no pisar r12-r15\n"
+        "    mov  r9d,  r12d        ; cur_x\n"
+        "    mov  r10d, r13d        ; cur_y\n"
+        "    ; dx = |x1-x0|\n"
+        "    mov  eax, r14d\n"
+        "    sub  eax, r12d\n"
+        "    cdq\n"
+        "    xor  eax, edx\n"
+        "    sub  eax, edx\n"
+        "    mov  ebx, eax          ; ebx = dx\n"
+        "    ; dy = |y1-y0|\n"
+        "    mov  eax, r15d\n"
+        "    sub  eax, r13d\n"
+        "    cdq\n"
+        "    xor  eax, edx\n"
+        "    sub  eax, edx\n"
+        "    push rax               ; [rsp+?] = dy\n"
+        "    ; sx\n"
+        "    mov  eax, 1\n"
+        "    cmp  r12d, r14d\n"
+        "    jle  .ds_sx_ok\n"
+        "    neg  eax\n"
+        ".ds_sx_ok:\n"
+        "    push rax               ; sx\n"
+        "    ; sy\n"
+        "    mov  eax, 1\n"
+        "    cmp  r13d, r15d\n"
+        "    jle  .ds_sy_ok\n"
+        "    neg  eax\n"
+        ".ds_sy_ok:\n"
+        "    push rax               ; sy\n"
+        "    ; err = dx - dy\n"
+        "    mov  r11d, ebx\n"
+        "    sub  r11d, dword [rsp+16]  ; err = dx - dy\n"
+        ".ds_loop:\n"
+        "    ; Dibujar punto actual\n"
+        "    mov  ecx, r9d\n"
+        "    mov  edx, r10d\n"
+        "    call set_cursor\n"
+        "    mov  rsi, [rsp+24]     ; rsi = ptr_char\n"
+        "    call write_str\n"
+        "    ; ¿Llegamos al destino?\n"
+        "    cmp  r9d,  r14d\n"
+        "    jne  .ds_cont\n"
+        "    cmp  r10d, r15d\n"
+        "    je   .ds_done\n"
+        ".ds_cont:\n"
+        "    ; e2 = 2 * err\n"
+        "    mov  eax, r11d\n"
+        "    add  eax, eax\n"
+        "    ; if e2 > -dy → err -= dy; x += sx\n"
+        "    mov  ecx, dword [rsp+16]  ; dy\n"
+        "    neg  ecx\n"
+        "    cmp  eax, ecx\n"
+        "    jle  .ds_skip_x\n"
+        "    sub  r11d, dword [rsp+16]\n"
+        "    add  r9d,  dword [rsp+8]  ; sx\n"
+        ".ds_skip_x:\n"
+        "    ; if e2 < dx → err += dx; y += sy\n"
+        "    cmp  eax, ebx\n"
+        "    jge  .ds_skip_y\n"
+        "    add  r11d, ebx\n"
+        "    add  r10d, dword [rsp+0]  ; sy\n"
+        ".ds_skip_y:\n"
+        "    jmp  .ds_loop\n"
+        ".ds_done:\n"
+        "    add  rsp, 24           ; limpiar sy, sx, dy\n"
+        "    pop  rsi\n"
+        "    pop  r11\n"
+        "    pop  r10\n"
+        "    pop  r9\n"
+        "    pop  rbx\n"
+        "    ret\n\n"
+    );
+
+    /* ── render_frame ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; render_frame: dibuja un frame completo\n"
+        ";   entrada: r12d = índice en traza\n"
+        "; ----------------------------------------------------------\n"
+        "render_frame:\n"
+        "    push rbp\n"
+        "    mov  rbp, rsp\n"
+        "    sub  rsp, 64           ; locales: base_sx, base_sy,\n"
+        "                           ;          codo_sx, codo_sy,\n"
+        "                           ;          ef_sx,   ef_sy\n"
+        "\n"
+        "    ; ── Cursor a (0,0) para redibujar ──\n"
+        "    xor  ecx, ecx\n"
+        "    xor  edx, edx\n"
+        "    call set_cursor\n\n"
+
+        "    ; ── Borde superior ──\n"
+        "    xor  ecx, ecx\n"
+        "    xor  edx, edx\n"
+        "    mov  r8d, 80\n"
+        "    lea  rsi, [rel ch_hline]\n"
+        "    call draw_hline\n\n"
+
+        "    ; ── Borde inferior ──\n"
+        "    xor  ecx, ecx\n"
+        "    mov  edx, 29\n"
+        "    mov  r8d, 80\n"
+        "    lea  rsi, [rel ch_hline]\n"
+        "    call draw_hline\n\n"
+
+        "    ; ── Borde izquierdo ──\n"
+        "    xor  ecx, ecx\n"
+        "    mov  edx, 1\n"
+        "    mov  r8d, 28\n"
+        "    lea  rsi, [rel ch_vline]\n"
+        "    call draw_vline\n\n"
+
+        "    ; ── Borde derecho ──\n"
+        "    mov  ecx, 79\n"
+        "    mov  edx, 1\n"
+        "    mov  r8d, 28\n"
+        "    lea  rsi, [rel ch_vline]\n"
+        "    call draw_vline\n\n"
+
+        "    ; ── Divisor panel col=20 ──\n"
+        "    mov  ecx, 20\n"
+        "    mov  edx, 1\n"
+        "    mov  r8d, 28\n"
+        "    lea  rsi, [rel ch_vline]\n"
+        "    call draw_vline\n\n"
+
+        "    ; ════ PANEL IZQUIERDO ════\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 1\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_title]\n"
+        "    call write_str\n\n"
+
+        "    ; X\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 3\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_lx]\n"
+        "    call write_str\n"
+        "    mov  ecx, dword [rel traza_x + r12*4]\n"
+        "    call itoa_dec\n"
+        "    lea  rsi, [rel num_buf]\n"
+        "    call write_str\n\n"
+
+        "    ; Y\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 4\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_ly]\n"
+        "    call write_str\n"
+        "    mov  ecx, dword [rel traza_y + r12*4]\n"
+        "    call itoa_dec\n"
+        "    lea  rsi, [rel num_buf]\n"
+        "    call write_str\n\n"
+
+        "    ; Z\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 5\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_lz]\n"
+        "    call write_str\n"
+        "    mov  ecx, dword [rel traza_z + r12*4]\n"
+        "    call itoa_dec\n"
+        "    lea  rsi, [rel num_buf]\n"
+        "    call write_str\n\n"
+
+        "    ; Velocidad\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 7\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_lvel]\n"
+        "    call write_str\n"
+        "    mov  ecx, dword [rel traza_vel + r12*4]\n"
+        "    call itoa_dec\n"
+        "    lea  rsi, [rel num_buf]\n"
+        "    call write_str\n"
+        "    lea  rsi, [rel str_lpct]\n"
+        "    call write_str\n\n"
+
+        "    ; Pinza\n"
+        "    mov  ecx, 1\n"
+        "    mov  edx, 9\n"
+        "    call set_cursor\n"
+        "    mov  eax, dword [rel traza_pinza + r12*4]\n"
+        "    test eax, eax\n"
+        "    jz   .rf_pinza_close\n"
+        "    lea  rsi, [rel str_lopen]\n"
+        "    jmp  .rf_pinza_show\n"
+        ".rf_pinza_close:\n"
+        "    lea  rsi, [rel str_lclose]\n"
+        ".rf_pinza_show:\n"
+        "    call write_str\n\n"
+
+        "    ; ════ BRAZO (proyección isométrica) ════\n"
+        "    ; Proyectar base (0,0,0)\n"
+        "    xor  ecx, ecx\n"
+        "    xor  edx, edx\n"
+        "    xor  r8d, r8d\n"
+        "    call iso_project\n"
+        "    mov  dword [rbp-8],  eax    ; base_sx\n"
+        "    mov  dword [rbp-12], edx    ; base_sy\n\n"
+
+        "    ; Calcular posición del codo:\n"
+        "    ;   ex = round(200 * cos(q1)), ey = round(200 * sin(q1))\n"
+        "    ; Para simplicidad en ASM puro usamos la posición X,Y del\n"
+        "    ; efector con factor L1/(L1+L2) para aproximar el codo.\n"
+        "    mov  ecx, dword [rel traza_x + r12*4]\n"
+        "    mov  edx, dword [rel traza_y + r12*4]\n"
+        "    mov  r8d, dword [rel traza_z + r12*4]\n"
+        "    ; codo ≈ (X*200/350, Y*200/350, Z)\n"
+        "    imul ecx, 200\n"
+        "    cdq\n"
+        "    push rdx\n"
+        "    mov  eax, ecx\n"
+        "    mov  ecx, 350\n"
+        "    idiv ecx\n"
+        "    mov  ecx, eax          ; ecx = codo_x\n"
+        "    pop  rdx\n"
+        "    push rcx               ; guardar codo_x\n"
+        "    mov  eax, dword [rel traza_y + r12*4]\n"
+        "    imul eax, 200\n"
+        "    cdq\n"
+        "    mov  ecx, 350\n"
+        "    idiv ecx\n"
+        "    mov  edx, eax          ; edx = codo_y\n"
+        "    pop  rcx               ; ecx = codo_x\n"
+        "    call iso_project\n"
+        "    mov  dword [rbp-16], eax    ; codo_sx\n"
+        "    mov  dword [rbp-20], edx    ; codo_sy\n\n"
+
+        "    ; Proyectar efector (X, Y, Z)\n"
+        "    mov  ecx, dword [rel traza_x + r12*4]\n"
+        "    mov  edx, dword [rel traza_y + r12*4]\n"
+        "    mov  r8d, dword [rel traza_z + r12*4]\n"
+        "    call iso_project\n"
+        "    mov  dword [rbp-24], eax    ; ef_sx\n"
+        "    mov  dword [rbp-28], edx    ; ef_sy\n\n"
+
+        "    ; Segmento 1: base → codo  (█)\n"
+        "    mov  r12d, dword [rbp-8]\n"
+        "    mov  r13d, dword [rbp-12]\n"
+        "    mov  r14d, dword [rbp-16]\n"
+        "    mov  r15d, dword [rbp-20]\n"
+        "    lea  rsi, [rel ch_seg1]\n"
+        "    call draw_segment\n\n"
+
+        "    ; Segmento 2: codo → efector  (▓)\n"
+        "    mov  r12d, dword [rbp-16]\n"
+        "    mov  r13d, dword [rbp-20]\n"
+        "    mov  r14d, dword [rbp-24]\n"
+        "    mov  r15d, dword [rbp-28]\n"
+        "    lea  rsi, [rel ch_seg2]\n"
+        "    call draw_segment\n\n"
+
+        "    ; Marcar base '()'\n"
+        "    mov  ecx, dword [rbp-8]\n"
+        "    mov  edx, dword [rbp-12]\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel ch_base]\n"
+        "    call write_str\n\n"
+
+        "    ; Marcar codo 'O'\n"
+        "    mov  ecx, dword [rbp-16]\n"
+        "    mov  edx, dword [rbp-20]\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel ch_elbow]\n"
+        "    call write_str\n\n"
+
+        "    ; Marcar efector (* ó X según pinza)\n"
+        "    ; Recuperar índice de traza — está en el frame superior\n"
+        "    ; r12d fue sobreescrito; usamos el valor guardado en rbp-8 offset\n"
+        "    ; Para esto guardamos el índice original al inicio de render_frame\n"
+        "    ; (ver guardado abajo — aquí asumimos que rbp+16 = índice caller)\n"
+        "    mov  ecx, dword [rbp-24]\n"
+        "    mov  edx, dword [rbp-28]\n"
+        "    call set_cursor\n"
+        "    ; Leer pinza — necesitamos el índice; está en la variable local rbp-32\n"
+        "    mov  eax, dword [rbp-32]    ; índice guardado al inicio\n"
+        "    mov  eax, dword [rel traza_pinza + rax*4]\n"
+        "    test eax, eax\n"
+        "    jz   .rf_ef_close\n"
+        "    lea  rsi, [rel ch_efopen]\n"
+        "    jmp  .rf_ef_show\n"
+        ".rf_ef_close:\n"
+        "    lea  rsi, [rel ch_efclose]\n"
+        ".rf_ef_show:\n"
+        "    call write_str\n\n"
+
+        "    ; ════ BARRA DE PROGRESO ════\n"
+        "    mov  ecx, 21\n"
+        "    mov  edx, 28\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_barl]\n"
+        "    call write_str\n\n"
+        "    ; Calcular bloques llenos: (idx * 55) / traza_len\n"
+        "    mov  eax, dword [rbp-32]    ; idx\n"
+        "    imul eax, 55\n"
+        "    cdq\n"
+        "    idiv dword [rel traza_len]\n"
+        "    mov  r8d, eax              ; bloques llenos\n"
+        "    mov  ecx, 23\n"
+        "    mov  edx, 28\n"
+        "    lea  rsi, [rel ch_fill]\n"
+        "    call draw_hline\n\n"
+        "    ; Bloques vacíos\n"
+        "    mov  eax, 55\n"
+        "    sub  eax, r8d\n"
+        "    mov  r8d, eax\n"
+        "    mov  ecx, 23\n"
+        "    add  ecx, dword [rbp-36]    ; 23 + bloques_llenos\n"
+        "    mov  edx, 28\n"
+        "    lea  rsi, [rel ch_empty]\n"
+        "    call draw_hline\n\n"
+        "    mov  ecx, 78\n"
+        "    mov  edx, 28\n"
+        "    call set_cursor\n"
+        "    lea  rsi, [rel str_barr]\n"
+        "    call write_str\n\n"
+
+        "    mov  rsp, rbp\n"
+        "    pop  rbp\n"
+        "    ret\n\n"
+    );
+
+    /* ── Punto de entrada ── */
+    fprintf(f,
+        "; ----------------------------------------------------------\n"
+        "; Punto de entrada del ejecutable\n"
+        "; ----------------------------------------------------------\n"
+        "global mainCRTStartup\n"
+        "mainCRTStartup:\n"
+        "    sub  rsp, 40\n\n"
+        "    ; Obtener handle stdout\n"
+        "    mov  ecx, -11\n"
+        "    call GetStdHandle\n"
+        "    mov  [rel hConsole], rax\n\n"
+        "    ; Limpiar pantalla inicial\n"
+        "    xor  ecx, ecx\n"
+        "    xor  edx, edx\n"
+        "    call set_cursor\n\n"
+        "    ; Loop principal sobre la traza\n"
+        "    xor  r12d, r12d\n"
+        ".main_loop:\n"
+        "    cmp  r12d, dword [rel traza_len]\n"
+        "    jge  .main_done\n\n"
+        "    ; Guardar índice y llamar render\n"
+        "    push r12\n"
+        "    call render_frame\n"
+        "    pop  r12\n\n"
+        "    ; Delay basado en velocidad del estado actual\n"
+        "    sub  rsp, 32\n"
+        "    mov  eax,  dword [rel traza_vel + r12*4]\n"
+        "    ; delay_ms = 220 - vel*180/100\n"
+        "    imul eax, 180\n"
+        "    cdq\n"
+        "    mov  ecx, 100\n"
+        "    idiv ecx\n"
+        "    mov  ecx, 220\n"
+        "    sub  ecx, eax\n"
+        "    cmp  ecx, 35\n"
+        "    jge  .delay_ok\n"
+        "    mov  ecx, 35\n"
+        ".delay_ok:\n"
+        "    call Sleep\n"
+        "    add  rsp, 32\n\n"
+        "    inc  r12d\n"
+        "    jmp  .main_loop\n\n"
+        ".main_done:\n"
+        "    ; Pausa final de 2 segundos\n"
+        "    sub  rsp, 32\n"
+        "    mov  ecx, 2000\n"
+        "    call Sleep\n"
+        "    add  rsp, 32\n\n"
+        "    xor  ecx, ecx\n"
+        "    call ExitProcess\n"
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 4 — Backend SDL2
+ *
+ * Emite la traza como datos NASM con funciones accesibles desde C.
+ * El visualizador SDL2 existente en main.c llama estas funciones
+ * para obtener los estados en lugar de ejecutar la VM.
+ * ═══════════════════════════════════════════════════════════════ */
+
+static void emit_sdl2(FILE* f) {
+    fprintf(f,
+        "; ============================================================\n"
+        "; Generado por compilador SCARA — backend SDL2\n"
+        "; Datos de traza exportados como símbolos enlazables.\n"
+        "; El visualizador SDL2 llama traza_get_* para obtener estados.\n"
+        "; Ensamblar: nasm -f win64 programa.asm -o programa.obj\n"
+        "; Enlazar:   gcc visualizador.c programa.obj -lSDL2 -o programa.exe\n"
+        "; ============================================================\n\n"
+        "default rel\n\n"
+        "section .data\n\n"
+    );
+
+    emit_traza_data(f);
+
+    fprintf(f,
+        "\nsection .text\n\n"
+        "global traza_get_len\n"
+        "global traza_get_x\n"
+        "global traza_get_y\n"
+        "global traza_get_z\n"
+        "global traza_get_pinza\n"
+        "global traza_get_vel\n\n"
+
+        "; int traza_get_len(void)\n"
+        "traza_get_len:\n"
+        "    mov eax, dword [rel traza_len]\n"
+        "    ret\n\n"
+
+        "; int traza_get_x(int idx)     [idx en ecx — Windows x64 ABI]\n"
+        "traza_get_x:\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, dword [rel traza_x + rcx*4]\n"
+        "    ret\n\n"
+
+        "traza_get_y:\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, dword [rel traza_y + rcx*4]\n"
+        "    ret\n\n"
+
+        "traza_get_z:\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, dword [rel traza_z + rcx*4]\n"
+        "    ret\n\n"
+
+        "traza_get_pinza:\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, dword [rel traza_pinza + rcx*4]\n"
+        "    ret\n\n"
+
+        "traza_get_vel:\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, dword [rel traza_vel + rcx*4]\n"
+        "    ret\n"
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SECCIÓN 5 — Punto de entrada público
+ * ═══════════════════════════════════════════════════════════════ */
+
 int generar_ensamblador(const Instruccion* programa, int longitud,
-                        const char* ruta_salida) {
+                        const char* ruta_salida, OutputMode modo) {
+    /* 1. Ejecutar el bytecode para construir la traza */
+    int n = construir_traza(programa, longitud);
+    if (n <= 0) {
+        fprintf(stderr, "Error: traza vacia — revisa el programa fuente\n");
+        return 1;
+    }
+    printf("[GEN] Traza construida: %d estados (modo: %s)\n",
+           n, modo == OUTPUT_ASCII ? "ascii" : "sdl2");
+
+    /* 2. Abrir archivo de salida */
     FILE* f = fopen(ruta_salida, "w");
     if (!f) return 1;
 
-    for (int i = 0; i < longitud; i++) {
-        const Instruccion* ins = &programa[i];
-        const char* op_text = operacion_a_texto(ins->opcode);
-        switch (ins->opcode) {
-            case OP_MOVE:
-            case OP_MOVEJ:
-            case OP_APPROACH:
-                fprintf(f, "%s %d %d %d\n", op_text, ins->arg1, ins->arg2, ins->arg3);
-                break;
-            case OP_DEPART:
-                fprintf(f, "DEPART %d\n", ins->arg1);
-                break;
-            case OP_HOME:
-            case OP_OPEN:
-            case OP_CLOSE:
-            case OP_END_WHILE:
-            case OP_ELSE:
-            case OP_END_IF:
-            case OP_END_REPEAT:
-            case OP_HALT:
-                fprintf(f, "%s\n", op_text);
-                break;
-            case OP_SPEED:
-            case OP_WAIT:
-                fprintf(f, "%s %d\n", op_text, ins->arg1);
-                break;
-            case OP_PRINT:
-                fprintf(f, "PRINT \"%s\"\n", ins->sval);
-                break;
-            case OP_VAR:
-                fprintf(f, "VAR %s %d\n", ins->sval, ins->arg1);
-                break;
-            case OP_POINT:
-                fprintf(f, "POINT %s %d %d %d\n", ins->sval, ins->arg1, ins->arg2, ins->arg3);
-                break;
-            case OP_ASSIGN: {
-                fprintf(f, "ASSIGN %s ", ins->sval);
-                if (ins->flags & INS_F_ARG1_VAR) {
-                    fprintf(f, "%s", ins->sval2);
-                } else {
-                    fprintf(f, "%d", ins->arg1);
-                }
-                if (ins->arg2 == 1) {
-                    fprintf(f, " + ");
-                } else if (ins->arg2 == -1) {
-                    fprintf(f, " - ");
-                }
-                if (ins->arg2 != 0) {
-                    if (ins->flags & INS_F_ARG3_VAR) {
-                        fprintf(f, "%s", ins->sval3);
-                    } else {
-                        fprintf(f, "%d", ins->arg3);
-                    }
-                }
-                fprintf(f, "\n");
-                break;
-            }
-            case OP_WHILE:
-            case OP_IF: {
-                char left[64] = "";
-                char right[64] = "";
-                if (ins->flags & INS_F_ARG1_VAR) strcpy(left, ins->sval);
-                else sprintf(left, "%d", ins->arg1);
-                if (ins->flags & INS_F_ARG3_VAR) strcpy(right, ins->sval2);
-                else sprintf(right, "%d", ins->arg3);
-                fprintf(f, "%s %s %s %s\n", op_text, left, operador_texto(ins->arg2), right);
-                break;
-            }
-            case OP_REPEAT:
-                fprintf(f, "REPEAT %d\n", ins->arg1);
-                break;
-            default:
-                fprintf(f, "%s\n", op_text);
-                break;
-        }
+    /* 3. Delegar al backend correspondiente */
+    if (modo == OUTPUT_ASCII) {
+        emit_ascii(f);
+    } else {
+        emit_sdl2(f);
     }
 
     fclose(f);
-    return 0;
-}
-
-static char* trim(char* s) {
-    while (*s && isspace((unsigned char)*s)) s++;
-    if (*s == '\0') return s;
-    char* end = s + strlen(s) - 1;
-    while (end > s && isspace((unsigned char)*end)) *end-- = '\0';
-    return s;
-}
-
-static char* leer_cadena_entre_comillas(char* linea) {
-    char* inicio = strchr(linea, '"');
-    if (!inicio) return NULL;
-    inicio++;
-    char* fin = strchr(inicio, '"');
-    if (!fin) return NULL;
-    *fin = '\0';
-    return inicio;
-}
-
-int ensamblador_leer(const char* ruta, Instruccion* programa, int* longitud) {
-    FILE* f = fopen(ruta, "r");
-    if (!f) return 1;
-
-    char linea[512];
-    char linea_orig[512];   /* copia intacta para buscar strings entre comillas */
-    int len = 0;
-    while (fgets(linea, sizeof(linea), f)) {
-        char* p = trim(linea);
-        if (*p == '\0' || *p == '#') continue;
-
-        /* Guardar copia ANTES de que strtok mutile la cadena */
-        strncpy(linea_orig, p, sizeof(linea_orig) - 1);
-        linea_orig[sizeof(linea_orig) - 1] = '\0';
-
-        char* token = strtok(p, " \t\n");
-        if (!token) continue;
-
-        Instruccion ins;
-        memset(&ins, 0, sizeof(ins));
-
-        if (strcmp(token, "MOVE") == 0 || strcmp(token, "MOVEJ") == 0 ||
-            strcmp(token, "APPROACH") == 0) {
-            ins.opcode = (strcmp(token, "MOVE") == 0) ? OP_MOVE :
-                         (strcmp(token, "MOVEJ") == 0) ? OP_MOVEJ : OP_APPROACH;
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-            ins.arg2 = atoi(strtok(NULL, " \t\n"));
-            ins.arg3 = atoi(strtok(NULL, " \t\n"));
-        } else if (strcmp(token, "DEPART") == 0) {
-            ins.opcode = OP_DEPART;
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-        } else if (strcmp(token, "HOME") == 0) {
-            ins.opcode = OP_HOME;
-        } else if (strcmp(token, "OPEN") == 0) {
-            ins.opcode = OP_OPEN;
-        } else if (strcmp(token, "CLOSE") == 0) {
-            ins.opcode = OP_CLOSE;
-        } else if (strcmp(token, "SPEED") == 0) {
-            ins.opcode = OP_SPEED;
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-        } else if (strcmp(token, "WAIT") == 0) {
-            ins.opcode = OP_WAIT;
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-        } else if (strcmp(token, "PRINT") == 0) {
-            ins.opcode = OP_PRINT;
-            char* msg = leer_cadena_entre_comillas(linea_orig);
-            if (!msg) {
-                fclose(f);
-                return 1;
-            }
-            strncpy(ins.sval, msg, sizeof(ins.sval) - 1);
-        } else if (strcmp(token, "VAR") == 0) {
-            ins.opcode = OP_VAR;
-            char* nombre = strtok(NULL, " \t\n");
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-            strncpy(ins.sval, nombre, sizeof(ins.sval) - 1);
-        } else if (strcmp(token, "POINT") == 0) {
-            ins.opcode = OP_POINT;
-            char* nombre = strtok(NULL, " \t\n");
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-            ins.arg2 = atoi(strtok(NULL, " \t\n"));
-            ins.arg3 = atoi(strtok(NULL, " \t\n"));
-            strncpy(ins.sval, nombre, sizeof(ins.sval) - 1);
-        } else if (strcmp(token, "ASSIGN") == 0) {
-            ins.opcode = OP_ASSIGN;
-            char* destino = strtok(NULL, " \t\n");
-            strncpy(ins.sval, destino, sizeof(ins.sval) - 1);
-            char* op1 = strtok(NULL, " \t\n");
-            char* maybe_op = strtok(NULL, " \t\n");
-            if (!op1) {
-                fclose(f);
-                return 1;
-            }
-            if (!maybe_op) {
-                int tmp_val;
-                int tmp_is_var;
-                char tmp_name[64];
-                parsear_operando(op1, &tmp_val, &tmp_is_var, tmp_name);
-                if (tmp_is_var) {
-                    ins.flags |= INS_F_ARG1_VAR;
-                    strcpy(ins.sval2, tmp_name);
-                } else {
-                    ins.arg1 = tmp_val;
-                }
-                ins.arg2 = 0;
-                ins.arg3 = 0;
-            } else {
-                // op1 <op> op2
-                int tmp_val;
-                int tmp_is_var;
-                char tmp_name[64];
-                parsear_operando(op1, &tmp_val, &tmp_is_var, tmp_name);
-                if (tmp_is_var) {
-                    ins.flags |= INS_F_ARG1_VAR;
-                    strcpy(ins.sval2, tmp_name);
-                } else {
-                    ins.arg1 = tmp_val;
-                }
-                if (strcmp(maybe_op, "+") == 0) ins.arg2 = 1;
-                else if (strcmp(maybe_op, "-") == 0) ins.arg2 = -1;
-                else {
-                    fclose(f);
-                    return 1;
-                }
-                char* op2 = strtok(NULL, " \t\n");
-                if (!op2) {
-                    fclose(f);
-                    return 1;
-                }
-                parsear_operando(op2, &tmp_val, &tmp_is_var, tmp_name);
-                if (tmp_is_var) {
-                    ins.flags |= INS_F_ARG3_VAR;
-                    strcpy(ins.sval3, tmp_name);
-                } else {
-                    ins.arg3 = tmp_val;
-                }
-            }
-        } else if (strcmp(token, "WHILE") == 0 || strcmp(token, "IF") == 0) {
-            ins.opcode = (strcmp(token, "WHILE") == 0) ? OP_WHILE : OP_IF;
-            char* op1 = strtok(NULL, " \t\n");
-            char* op = strtok(NULL, " \t\n");
-            char* op2 = strtok(NULL, " \t\n");
-            if (!op1 || !op || !op2) {
-                fclose(f);
-                return 1;
-            }
-            int tmp_val;
-            int tmp_is_var;
-            char tmp_name[64];
-            parsear_operando(op1, &tmp_val, &tmp_is_var, tmp_name);
-            if (tmp_is_var) {
-                ins.flags |= INS_F_ARG1_VAR;
-                strcpy(ins.sval, tmp_name);
-            } else {
-                ins.arg1 = tmp_val;
-            }
-            ins.arg2 = operador_tipo(op);
-            parsear_operando(op2, &tmp_val, &tmp_is_var, tmp_name);
-            if (tmp_is_var) {
-                ins.flags |= INS_F_ARG3_VAR;
-                strcpy(ins.sval2, tmp_name);
-            } else {
-                ins.arg3 = tmp_val;
-            }
-        } else if (strcmp(token, "REPEAT") == 0) {
-            ins.opcode = OP_REPEAT;
-            ins.arg1 = atoi(strtok(NULL, " \t\n"));
-        } else if (strcmp(token, "END_WHILE") == 0) {
-            ins.opcode = OP_END_WHILE;
-        } else if (strcmp(token, "ELSE") == 0) {
-            ins.opcode = OP_ELSE;
-        } else if (strcmp(token, "END_IF") == 0) {
-            ins.opcode = OP_END_IF;
-        } else if (strcmp(token, "END_REPEAT") == 0) {
-            ins.opcode = OP_END_REPEAT;
-        } else if (strcmp(token, "HALT") == 0) {
-            ins.opcode = OP_HALT;
-        } else {
-            fclose(f);
-            return 1;
-        }
-
-        programa[len++] = ins;
-        if (len >= *longitud) break;
-    }
-
-    fclose(f);
-    *longitud = len;
     return 0;
 }

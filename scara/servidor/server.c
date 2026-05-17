@@ -27,11 +27,12 @@
 /* Rutas absolutas — se calculan en main() a partir de la ubicacion
  * real del .exe, usando GetModuleFileNameA + PathCombine manual.
  * Esto evita cualquier problema con working directory o espacios. */
-static char RUTA_SCARA   [MAX_PATH];
-static char RUTA_TEMP    [MAX_PATH];
-static char RUTA_SCARA_IN[MAX_PATH];
-static char RUTA_EXE_OUT [MAX_PATH];
-static char RUTA_INDEX   [MAX_PATH];
+static char RUTA_SCARA    [MAX_PATH];
+static char RUTA_TEMP     [MAX_PATH];
+static char RUTA_SCARA_IN [MAX_PATH];
+static char RUTA_EXE_OUT  [MAX_PATH];
+static char RUTA_INDEX    [MAX_PATH];
+static char RUTA_EJEMPLOS [MAX_PATH];  /* programasSCARA\ */
 #define PUERTO 8080
 
 /* Construye una ruta absoluta: base_dir + "\\" + sufijo → dst */
@@ -196,6 +197,60 @@ static void responder_cors(SOCKET s) {
         "Connection: close\r\n"
         "\r\n";
     enviar_todo(s, r, (int)strlen(r));
+}
+
+/*
+ * Sirve un archivo .scara de la galería de ejemplos.
+ * relpath llega como "correctos/c1_pickandplace.scara" (con slash UNIX).
+ * Rechaza cualquier ruta que contenga ".." para evitar path traversal.
+ */
+static void servir_ejemplo(SOCKET s, const char *relpath) {
+    if (strstr(relpath, "..")) {
+        const char *err =
+            "HTTP/1.1 403 Forbidden\r\n"
+            "Content-Length: 9\r\n"
+            "Connection: close\r\n\r\nForbidden";
+        enviar_todo(s, err, (int)strlen(err));
+        return;
+    }
+
+    char ruta[MAX_PATH * 2];
+    snprintf(ruta, sizeof(ruta), "%s\\%s", RUTA_EJEMPLOS, relpath);
+    for (int i = 0; ruta[i]; i++)
+        if (ruta[i] == '/') ruta[i] = '\\';
+
+    FILE *f = fopen(ruta, "rb");
+    if (!f) {
+        const char *err =
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Type: text/plain\r\n"
+            "Content-Length: 9\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Connection: close\r\n\r\nNot Found";
+        enviar_todo(s, err, (int)strlen(err));
+        return;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long tam = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char headers[512];
+    snprintf(headers, sizeof(headers),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n"
+        "Access-Control-Allow-Origin: *\r\n"
+        "Content-Length: %ld\r\n"
+        "Connection: close\r\n\r\n",
+        tam);
+    enviar_todo(s, headers, (int)strlen(headers));
+
+    char chunk[4096];
+    int  n;
+    while ((n = (int)fread(chunk, 1, sizeof(chunk), f)) > 0)
+        enviar_todo(s, chunk, n);
+
+    fclose(f);
 }
 
 /* Servir un archivo estatico (para index.html) */
@@ -445,6 +500,13 @@ static void manejar_conexion(SOCKET cliente) {
         return;
     }
 
+    /* ── GET /examples/{categoria}/{archivo.scara} ── */
+    if (strcmp(metodo, "GET") == 0 && strncmp(uri, "/examples/", 10) == 0) {
+        servir_ejemplo(cliente, uri + 10);
+        closesocket(cliente);
+        return;
+    }
+
     /* ── 404 ── */
     responder_json(cliente, 404, "{\"error\":\"ruta no encontrada\"}");
     closesocket(cliente);
@@ -478,11 +540,12 @@ int main(void) {
     if (s2) *s2 = '\0';
 
     /* Rutas absolutas */
-    construir_ruta(RUTA_SCARA,    dir_base, "programasCOMPI\\scara.exe");
-    construir_ruta(RUTA_TEMP,     dir_base, "temp");
-    construir_ruta(RUTA_SCARA_IN, dir_base, "temp\\input.scara");
-    construir_ruta(RUTA_EXE_OUT,  dir_base, "temp\\input.exe");
-    construir_ruta(RUTA_INDEX,    dir_base, "frontend\\index.html");
+    construir_ruta(RUTA_SCARA,     dir_base, "programasCOMPI\\scara.exe");
+    construir_ruta(RUTA_TEMP,      dir_base, "temp");
+    construir_ruta(RUTA_SCARA_IN,  dir_base, "temp\\input.scara");
+    construir_ruta(RUTA_EXE_OUT,   dir_base, "temp\\input.exe");
+    construir_ruta(RUTA_INDEX,     dir_base, "frontend\\index.html");
+    construir_ruta(RUTA_EJEMPLOS,  dir_base, "programasSCARA");
 
     /* Crear carpeta temp si no existe */
     CreateDirectoryA(RUTA_TEMP, NULL);

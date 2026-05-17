@@ -28,14 +28,8 @@
       --warning:     #FFA726;
     }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      font-size: 14px;
-      overflow: hidden;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; overflow: hidden; }
 
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--panel); }
@@ -56,388 +50,205 @@
 
     /* ══ NAVBAR ══ */
     .navbar {
-      grid-area: navbar;
-      background: var(--panel);
+      grid-area: navbar; background: var(--panel);
       border-bottom: 2px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 10px;
-      user-select: none;
+      display: flex; align-items: center; padding: 0 16px; gap: 10px; user-select: none;
     }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-weight: 700;
-      font-size: 15px;
-      letter-spacing: 2.5px;
-      color: var(--kw);
-      text-transform: uppercase;
-    }
-    .logo-icon {
-      width: 30px; height: 30px;
+    .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px;
+      letter-spacing: 2.5px; color: var(--kw); text-transform: uppercase; }
+    .logo-icon { width: 30px; height: 30px;
       background: linear-gradient(135deg, var(--accent) 0%, var(--point) 100%);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 900; color: white; letter-spacing: 0;
-      box-shadow: 0 2px 8px rgba(30,136,229,0.4);
-    }
-    .logo-sub {
-      font-size: 9px; font-weight: 400; color: var(--text-muted);
-      letter-spacing: 1px; margin-left: -6px;
-      align-self: flex-end; margin-bottom: 3px;
-    }
+      border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900; color: white; box-shadow: 0 2px 8px rgba(30,136,229,0.4); }
+    .logo-sub { font-size: 9px; font-weight: 400; color: var(--text-muted); letter-spacing: 1px;
+      margin-left: -6px; align-self: flex-end; margin-bottom: 3px; }
     .navbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
     .navbar-sep { flex: 1; }
 
-    .badge {
-      padding: 3px 10px; border-radius: 12px;
-      font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
-      display: flex; align-items: center; gap: 5px;
-    }
+    .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+      letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px; }
     .badge-idle  { background: #1A1A30; color: var(--text-dim);  border: 1px solid #2A2A4A; }
     .badge-ok    { background: #0D2214; color: var(--success);   border: 1px solid #1B4A2A; }
     .badge-error { background: #200D0D; color: var(--err);       border: 1px solid #4A1B1B; }
+    .badge-busy  { background: #0D1A30; color: var(--kw);        border: 1px solid #1A3050; }
 
-    .btn {
-      padding: 7px 16px; border: none; border-radius: 6px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; gap: 6px;
-      transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-      white-space: nowrap;
-    }
-    .btn:hover  { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
-    .btn:active { transform: translateY(0); box-shadow: none; }
+    .btn { padding: 7px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s; white-space: nowrap; }
+    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    .btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: white; }
     .btn-success { background: #2E7D32; color: white; }
     .btn-ghost   { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-    .btn-ghost:hover { color: var(--text); border-color: var(--accent2); }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--accent2); }
     .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-    /* ══ SIDEBAR ══ */
-    .sidebar {
-      grid-area: sidebar;
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spinning { display: inline-block; animation: spin 0.7s linear infinite; }
 
-    /* Toggle Galería / Carpeta */
-    .sidebar-mode-bar {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .mode-btn {
-      flex: 1;
-      padding: 9px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      text-align: center;
-      cursor: pointer;
-      color: var(--text-muted);
-      border-bottom: 2px solid transparent;
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      user-select: none;
-    }
+    /* ══ SIDEBAR ══ */
+    .sidebar { grid-area: sidebar; background: var(--panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; }
+
+    .sidebar-mode-bar { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .mode-btn { flex: 1; padding: 9px 8px; font-size: 11px; font-weight: 600; text-align: center;
+      cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent;
+      transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px; user-select: none; }
     .mode-btn:hover { color: var(--text-dim); background: rgba(255,255,255,0.03); }
-    .mode-btn.active {
-      color: var(--kw);
-      border-bottom-color: var(--accent);
-      background: rgba(30,136,229,0.06);
-    }
+    .mode-btn.active { color: var(--kw); border-bottom-color: var(--accent); background: rgba(30,136,229,0.06); }
     .mode-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
 
-    /* Vista Galería */
     .sidebar-view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
     .sidebar-view.active { display: flex; }
-
     .sidebar-scroll { flex: 1; overflow-y: auto; }
 
     .gallery-group { padding: 4px 0; }
-    .gallery-group-label {
-      padding: 8px 14px 3px;
-      font-size: 10px; font-weight: 700; letter-spacing: 1px;
-      color: var(--text-muted); text-transform: uppercase;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .dot {
-      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-    }
+    .gallery-group-label { padding: 8px 14px 3px; font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .dot-ok  { background: var(--success); box-shadow: 0 0 4px var(--success); }
     .dot-lex { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
     .dot-syn { background: var(--point);   box-shadow: 0 0 4px var(--point);   }
     .dot-sem { background: var(--err);     box-shadow: 0 0 4px var(--err);     }
 
-    .gallery-item {
-      padding: 5px 14px 5px 22px;
-      cursor: pointer;
-      border-left: 2px solid transparent;
-      font-size: 12px; color: var(--text-dim);
-      transition: all 0.12s;
+    .gallery-item { padding: 5px 14px 5px 22px; cursor: pointer; border-left: 2px solid transparent;
+      font-size: 12px; color: var(--text-dim); transition: all 0.12s;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      display: flex; align-items: center; gap: 6px;
-    }
+      display: flex; align-items: center; gap: 6px; }
     .gallery-item:hover { background: rgba(30,136,229,0.07); color: var(--text); border-left-color: var(--accent2); }
     .gallery-item.active { background: rgba(30,136,229,0.12); color: var(--kw); border-left-color: var(--accent); }
+    .gallery-item.loading { opacity: 0.6; cursor: wait; }
     .file-icon { font-size: 10px; opacity: 0.55; flex-shrink: 0; }
     .sidebar-divider { height: 1px; background: var(--border); margin: 3px 10px; }
 
     /* Vista Carpeta */
-    .folder-view-inner {
-      display: flex; flex-direction: column;
-      height: 100%; overflow: hidden;
-    }
-    .folder-drop-zone {
-      margin: 12px;
-      border: 2px dashed var(--border);
-      border-radius: 8px;
-      padding: 20px 12px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-    .folder-drop-zone:hover, .folder-drop-zone.drag-over {
-      border-color: var(--accent2);
-      background: rgba(30,136,229,0.07);
-      color: var(--text-dim);
-    }
-    .folder-drop-zone svg { width: 28px; height: 28px; margin-bottom: 8px; opacity: 0.4; display: block; margin: 0 auto 8px; }
+    .folder-view-inner { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    .folder-drop-zone { margin: 12px; border: 2px dashed var(--border); border-radius: 8px;
+      padding: 20px 12px; text-align: center; cursor: pointer; transition: all 0.2s;
+      color: var(--text-muted); font-size: 12px; }
+    .folder-drop-zone:hover { border-color: var(--accent2); background: rgba(30,136,229,0.07); color: var(--text-dim); }
+    .folder-drop-zone svg { width: 28px; height: 28px; opacity: 0.4; display: block; margin: 0 auto 8px; }
     .folder-drop-zone p { line-height: 1.5; }
     .folder-drop-zone strong { color: var(--kw); }
-
-    .folder-info {
-      padding: 6px 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex; align-items: center; gap: 6px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
+    .folder-info { padding: 6px 12px; font-size: 11px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .folder-info .folder-name { color: var(--var); font-weight: 600; }
-    .folder-info .folder-count {
-      margin-left: auto;
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1px 7px;
-      font-size: 10px;
-      color: var(--text-dim);
-    }
-
+    .folder-info .folder-count { margin-left: auto; background: var(--panel2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1px 7px; font-size: 10px; color: var(--text-dim); }
     .folder-file-list { flex: 1; overflow-y: auto; }
-    .folder-file-item {
-      padding: 6px 14px 6px 14px;
-      cursor: pointer;
-      border-left: 2px solid transparent;
-      font-size: 12px; color: var(--text-dim);
-      transition: all 0.12s;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      display: flex; align-items: center; gap: 7px;
-    }
+    .folder-file-item { padding: 6px 14px; cursor: pointer; border-left: 2px solid transparent;
+      font-size: 12px; color: var(--text-dim); transition: all 0.12s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 7px; }
     .folder-file-item:hover { background: rgba(30,136,229,0.07); color: var(--text); border-left-color: var(--accent2); }
     .folder-file-item.active { background: rgba(30,136,229,0.12); color: var(--kw); border-left-color: var(--accent); }
-    .folder-file-item .fext {
-      font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
-      background: #1A1A2E; border: 1px solid #2A2A4A;
-      border-radius: 3px; padding: 1px 4px; color: var(--text-muted);
-      flex-shrink: 0;
-    }
-    .folder-empty {
-      padding: 20px 14px;
-      font-size: 12px;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.6;
-    }
+    .fext { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; background: #1A1A2E;
+      border: 1px solid #2A2A4A; border-radius: 3px; padding: 1px 4px; color: var(--text-muted); flex-shrink: 0; }
+    .folder-empty { padding: 20px 14px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
     /* ══ EDITOR ══ */
-    .editor-area {
-      grid-area: editor;
-      display: flex; flex-direction: column;
-      background: var(--bg); overflow: hidden;
-    }
-    .editor-tabs {
-      display: flex; align-items: center;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 0 8px; min-height: 36px;
-    }
-    .editor-tab {
-      padding: 8px 16px; font-size: 12px; cursor: pointer;
-      color: var(--text-muted); border-bottom: 2px solid transparent;
-      white-space: nowrap; display: flex; align-items: center; gap: 6px;
-      transition: color 0.15s;
-    }
+    .editor-area { grid-area: editor; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+    .editor-tabs { display: flex; align-items: center; background: var(--panel);
+      border-bottom: 1px solid var(--border); padding: 0 8px; min-height: 36px; }
+    .editor-tab { padding: 8px 16px; font-size: 12px; cursor: pointer; color: var(--text-muted);
+      border-bottom: 2px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
     .editor-tab:hover { color: var(--text-dim); }
     .editor-tab.active { color: var(--text); border-bottom-color: var(--accent); }
     .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); display: none; }
     .editor-tab.modified .tab-dot { display: block; }
 
     .editor-body { flex: 1; display: flex; overflow: hidden; }
-    .line-numbers {
-      padding: 14px 0; min-width: 46px;
-      background: var(--panel); border-right: 1px solid var(--border);
-      text-align: right;
-      font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px;
-      color: var(--text-muted); user-select: none; overflow: hidden; flex-shrink: 0;
-    }
+    .line-numbers { padding: 14px 0; min-width: 46px; background: var(--panel); border-right: 1px solid var(--border);
+      text-align: right; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px;
+      color: var(--text-muted); user-select: none; overflow: hidden; flex-shrink: 0; }
     .line-numbers span { display: block; padding-right: 10px; }
-    .editor-code {
-      flex: 1; padding: 14px 16px;
-      font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px;
-      background: transparent; color: var(--text);
-      border: none; outline: none; resize: none; overflow: auto;
-      tab-size: 4; caret-color: var(--kw);
-    }
+    .editor-code { flex: 1; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px; line-height: 20px; background: transparent; color: var(--text);
+      border: none; outline: none; resize: none; overflow: auto; tab-size: 4; caret-color: var(--kw); }
     .editor-code::selection { background: #1A3050; }
 
     /* ══ OUTPUT PANEL ══ */
-    .output-panel {
-      grid-area: output;
-      background: var(--panel);
-      border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; overflow: hidden;
-    }
-    .output-tabs {
-      display: flex;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      min-height: 36px; flex-shrink: 0;
-    }
-    .output-tab {
-      padding: 8px 13px; font-size: 12px; cursor: pointer;
-      color: var(--text-muted); border-bottom: 2px solid transparent;
-      transition: color 0.15s;
-      display: flex; align-items: center; gap: 5px; white-space: nowrap;
-    }
+    .output-panel { grid-area: output; background: var(--panel); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; }
+    .output-tabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--border);
+      min-height: 36px; flex-shrink: 0; }
+    .output-tab { padding: 8px 13px; font-size: 12px; cursor: pointer; color: var(--text-muted);
+      border-bottom: 2px solid transparent; transition: color 0.15s; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .output-tab:hover { color: var(--text-dim); }
     .output-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-
-    .tab-badge {
-      background: var(--accent2); color: white;
-      font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700;
-    }
+    .tab-badge { background: var(--accent2); color: white; font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700; }
     .tab-badge.ok  { background: #1B4A2A; color: var(--success); }
     .tab-badge.err { background: #4A1B1B; color: var(--err); }
 
-    /* Paneles principales */
     .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
     .tab-panel.active { display: flex; }
-
     .output-content { flex: 1; overflow-y: auto; padding: 12px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; }
     .output-content.no-pad { padding: 0; overflow: auto; }
 
     /* ── Compilación ── */
     .compile-result { display: flex; flex-direction: column; gap: 10px; }
-    .result-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 12px; border-radius: 6px;
-      font-size: 13px; font-weight: 600; line-height: 1.4;
-    }
+    .result-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; line-height: 1.4; font-family: 'Segoe UI', sans-serif; }
     .result-ok    { background: #0A2010; border: 1px solid #1B5E20; color: var(--success); }
     .result-error { background: #180808; border: 1px solid #5A1010; color: var(--err); }
+    .result-idle  { background: var(--panel2); border: 1px solid var(--border); color: var(--text-muted); }
 
     .result-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .stat-card {
-      background: var(--panel2); border: 1px solid var(--border);
-      border-radius: 6px; padding: 8px 12px;
-    }
-    .stat-label {
-      font-size: 10px; color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 3px; font-family: 'Segoe UI', sans-serif;
-    }
+    .stat-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+    .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 3px; font-family: 'Segoe UI', sans-serif; }
     .stat-value { font-size: 22px; font-weight: 700; font-family: 'Consolas', monospace; }
 
-    .section-title {
-      font-size: 10px; font-weight: 700; letter-spacing: 1px;
-      color: var(--text-muted); text-transform: uppercase;
-      margin: 8px 0 5px; padding-bottom: 4px;
-      border-bottom: 1px solid var(--border); font-family: 'Segoe UI', sans-serif;
-    }
-    .output-raw {
-      background: var(--panel2); border: 1px solid var(--border);
-      border-radius: 6px; padding: 10px;
-      white-space: pre-wrap; word-break: break-word;
-      color: var(--text-dim); font-size: 11px; line-height: 1.7;
-    }
+    .section-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted);
+      text-transform: uppercase; margin: 8px 0 5px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--border); font-family: 'Segoe UI', sans-serif; }
+    .output-raw { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px; white-space: pre-wrap; word-break: break-word; color: var(--text-dim); font-size: 11px; line-height: 1.7; }
 
-    /* ── Sub-tabs bytecode ── */
-    .bytecode-panel {
-      display: flex; flex-direction: column; height: 100%; overflow: hidden;
-    }
-    .bytecode-sub-tabs {
-      display: flex;
-      background: #07070F;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      padding: 0 8px;
-    }
-    .bytecode-sub-tab {
-      padding: 7px 14px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      color: var(--text-muted); border-bottom: 2px solid transparent;
-      transition: color 0.15s;
-      display: flex; align-items: center; gap: 6px;
-      white-space: nowrap;
-    }
+    /* Error blocks */
+    .error-block { background: #150808; border: 1px solid #3A1515; border-radius: 6px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+    .error-type-badge { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      display: inline-flex; align-items: center; gap: 5px; font-family: 'Segoe UI', sans-serif; }
+    .err-lexico   { color: var(--warning); }
+    .err-sint     { color: var(--point); }
+    .err-sem      { color: var(--err); }
+    .error-lineno { font-size: 11px; color: var(--text-muted); font-family: 'Segoe UI', sans-serif; }
+    .error-msg    { font-size: 12px; color: var(--text); font-family: 'Segoe UI', sans-serif; }
+    .error-source { background: #0A0A18; border-radius: 4px; padding: 6px 8px; font-size: 12px;
+      color: var(--text-dim); white-space: pre; }
+    .error-pointer { color: var(--err); }
+
+    /* ── Bytecode ── */
+    .bytecode-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+    .bytecode-sub-tabs { display: flex; background: #07070F; border-bottom: 1px solid var(--border);
+      flex-shrink: 0; padding: 0 8px; }
+    .bytecode-sub-tab { padding: 7px 14px; font-size: 11px; font-weight: 600; cursor: pointer;
+      color: var(--text-muted); border-bottom: 2px solid transparent; transition: color 0.15s;
+      display: flex; align-items: center; gap: 6px; white-space: nowrap; }
     .bytecode-sub-tab:hover { color: var(--text-dim); }
     .bytecode-sub-tab.active { color: var(--text); border-bottom-color: var(--point); }
-
-    .bytecode-sub-badge {
-      font-size: 9px; font-weight: 700; padding: 1px 5px;
-      border-radius: 8px; font-family: 'Segoe UI', sans-serif;
-    }
-    .bsb-inicial  { background: #1A1A30; color: var(--text-dim); border: 1px solid #2A2A4A; }
-    .bsb-opt      { background: #0A2010; color: var(--success);  border: 1px solid #1B4A2A; }
-
+    .bytecode-sub-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; font-family: 'Segoe UI', sans-serif; }
+    .bsb-inicial { background: #1A1A30; color: var(--text-dim); border: 1px solid #2A2A4A; }
+    .bsb-opt     { background: #0A2010; color: var(--success);  border: 1px solid #1B4A2A; }
     .bytecode-sub-panel { display: none; flex: 1; overflow: auto; }
     .bytecode-sub-panel.active { display: block; }
 
-    /* Diferencias en bytecode */
-    .row-removed td { opacity: 0.45; text-decoration: line-through; background: rgba(239,83,80,0.06) !important; }
-    .row-kept td { background: transparent; }
-    .removed-badge {
-      display: inline-block; font-size: 9px; font-weight: 700;
-      padding: 1px 5px; border-radius: 3px;
-      background: rgba(239,83,80,0.15); color: var(--err);
-      border: 1px solid rgba(239,83,80,0.3);
-      margin-left: 4px; vertical-align: middle;
-    }
-    .opt-diff-banner {
-      padding: 8px 12px;
-      background: #0A2010; border-bottom: 1px solid #1B3A20;
-      font-size: 11px; color: var(--success);
-      display: flex; align-items: center; gap: 8px;
-      font-family: 'Segoe UI', sans-serif;
-      flex-shrink: 0;
-    }
+    .opt-diff-banner { padding: 8px 12px; background: #0A2010; border-bottom: 1px solid #1B3A20;
+      font-size: 11px; color: var(--success); display: flex; align-items: center; gap: 8px;
+      font-family: 'Segoe UI', sans-serif; flex-shrink: 0; flex-wrap: wrap; }
     .opt-diff-banner span { color: var(--text-muted); }
+
+    .empty-table { padding: 32px; text-align: center; color: var(--text-muted);
+      font-size: 12px; font-family: 'Segoe UI', sans-serif; }
 
     /* ── Tablas ── */
     .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-    .data-table th {
-      background: #050510;
-      color: var(--text-muted); font-size: 10px; font-weight: 700;
-      letter-spacing: 0.8px; text-transform: uppercase;
-      padding: 7px 8px; text-align: left;
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 1;
-      font-family: 'Segoe UI', sans-serif; white-space: nowrap;
-    }
-    .data-table td {
-      padding: 5px 8px; border-bottom: 1px solid #0C0C1C;
-      vertical-align: middle; white-space: nowrap;
-    }
+    .data-table th { background: #050510; color: var(--text-muted); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.8px; text-transform: uppercase; padding: 7px 8px; text-align: left;
+      border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1;
+      font-family: 'Segoe UI', sans-serif; white-space: nowrap; }
+    .data-table td { padding: 5px 8px; border-bottom: 1px solid #0C0C1C; vertical-align: middle; white-space: nowrap; }
     .data-table tr:hover td { background: #0E0E24; }
     .data-table tr:last-child td { border-bottom: none; }
 
@@ -448,10 +259,7 @@
     .cell-str   { color: var(--str); }
     .cell-empty { color: var(--text-muted); opacity: 0.25; }
 
-    .opcode-badge {
-      display: inline-block; padding: 2px 7px; border-radius: 4px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
-    }
+    .opcode-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; }
     .op-move   { background: #0C2438; color: #64B5F6; }
     .op-io     { background: #162410; color: #81C784; }
     .op-flow   { background: #221630; color: #CE93D8; }
@@ -459,7 +267,6 @@
     .op-halt   { background: #280C0C; color: #EF5350; }
     .op-other  { background: #161624; color: #7986CB; }
 
-    /* Símbolos */
     .sym-coords { display: flex; gap: 4px; align-items: center; }
     .coord-tag { font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: 700; }
     .coord-x { background: #200C0C; color: #EF9A9A; }
@@ -469,18 +276,21 @@
     .sym-type-point { color: var(--point); font-weight: 700; font-size: 10px; }
 
     /* ══ STATUS BAR ══ */
-    .status-bar {
-      grid-area: status;
-      background: var(--accent2);
-      display: flex; align-items: center;
-      padding: 0 12px; gap: 14px;
-      font-size: 11px; color: rgba(255,255,255,0.75);
-      font-family: 'Segoe UI', sans-serif;
-    }
+    .status-bar { grid-area: status; background: var(--accent2); display: flex; align-items: center;
+      padding: 0 12px; gap: 14px; font-size: 11px; color: rgba(255,255,255,0.75); font-family: 'Segoe UI', sans-serif; }
     .status-item { display: flex; align-items: center; gap: 4px; }
     .status-sep  { width: 1px; height: 12px; background: rgba(255,255,255,0.2); }
     .status-right { margin-left: auto; color: rgba(255,255,255,0.9); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 5px var(--success); }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      background: #1E1E36; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 18px; font-size: 12px; color: var(--text); font-family: 'Segoe UI', sans-serif;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+    .toast.show { opacity: 1; }
+    .toast.toast-ok    { border-color: #1B5E20; color: var(--success); }
+    .toast.toast-error { border-color: #5A1010; color: var(--err); }
   </style>
 </head>
 <body>
@@ -494,9 +304,9 @@
       <span class="logo-sub">IDE v1.0</span>
     </div>
     <div class="navbar-divider"></div>
-    <span class="badge badge-ok" id="status-badge">✓ Compilado</span>
+    <span class="badge badge-idle" id="status-badge">⬤ Listo</span>
     <div class="navbar-sep"></div>
-    <button class="btn btn-ghost" title="Nuevo archivo">
+    <button class="btn btn-ghost" id="btn-new" title="Nuevo archivo">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M9 1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L9 1zm0 1.5L12.5 5H9V2.5z"/></svg>
       Nuevo
     </button>
@@ -504,7 +314,7 @@
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2v12l8-6-8-6z"/></svg>
       Compilar
     </button>
-    <button class="btn btn-success" id="btn-run" title="Ejecutar visualizador">
+    <button class="btn btn-success" id="btn-run" title="Ejecutar visualizador SDL2">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2l10 6L3 14V2z"/></svg>
       Ejecutar
     </button>
@@ -512,346 +322,144 @@
 
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar">
-
-    <!-- Toggle Galería / Carpeta -->
     <div class="sidebar-mode-bar">
-      <div class="mode-btn active" data-mode="gallery" title="Ejemplos incluidos">
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/>
-        </svg>
+      <div class="mode-btn active" data-mode="gallery">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8V1.5Z"/></svg>
         Galería
       </div>
-      <div class="mode-btn" data-mode="folder" title="Abrir carpeta local">
-        <svg viewBox="0 0 16 16" fill="currentColor">
-          <path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/>
-        </svg>
+      <div class="mode-btn" data-mode="folder">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/></svg>
         Carpeta
       </div>
     </div>
 
-    <!-- ── Vista: Galería ── -->
+    <!-- Vista: Galería -->
     <div class="sidebar-view active" id="view-gallery">
       <div class="sidebar-scroll">
-
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-ok"></span>Correctos</div>
-          <div class="gallery-item active" data-file="c1_pickandplace"><span class="file-icon">◆</span>c1_pickandplace</div>
-          <div class="gallery-item" data-file="c2_condicional"><span class="file-icon">◆</span>c2_condicional</div>
-          <div class="gallery-item" data-file="c3_repeat"><span class="file-icon">◆</span>c3_repeat</div>
-          <div class="gallery-item" data-file="c4_while"><span class="file-icon">◆</span>c4_while</div>
-          <div class="gallery-item" data-file="c5_nested_while_if"><span class="file-icon">◆</span>c5_nested_while_if</div>
-          <div class="gallery-item" data-file="c6_nested_repeat_if"><span class="file-icon">◆</span>c6_nested_repeat_if</div>
-          <div class="gallery-item" data-file="c7_movej_stub"><span class="file-icon">◆</span>c7_movej_stub</div>
-          <div class="gallery-item" data-file="c8_ik_bordes"><span class="file-icon">◆</span>c8_ik_bordes</div>
+          <div class="gallery-item active" data-path="correctos/c1_pickandplace.scara"><span class="file-icon">◆</span>c1_pickandplace</div>
+          <div class="gallery-item" data-path="correctos/c2_condicional.scara"><span class="file-icon">◆</span>c2_condicional</div>
+          <div class="gallery-item" data-path="correctos/c3_repeat.scara"><span class="file-icon">◆</span>c3_repeat</div>
+          <div class="gallery-item" data-path="correctos/c4_while.scara"><span class="file-icon">◆</span>c4_while</div>
+          <div class="gallery-item" data-path="correctos/c5_nested_while_if.scara"><span class="file-icon">◆</span>c5_nested_while_if</div>
+          <div class="gallery-item" data-path="correctos/c6_nested_repeat_if.scara"><span class="file-icon">◆</span>c6_nested_repeat_if</div>
+          <div class="gallery-item" data-path="correctos/c7_movej_stub.scara"><span class="file-icon">◆</span>c7_movej_stub</div>
+          <div class="gallery-item" data-path="correctos/c8_ik_bordes.scara"><span class="file-icon">◆</span>c8_ik_bordes</div>
         </div>
-
         <div class="sidebar-divider"></div>
-
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-lex"></span>Errores Léxicos</div>
-          <div class="gallery-item" data-file="lex1_caracter_desconocido"><span class="file-icon">◇</span>lex1_caracter_desconocido</div>
-          <div class="gallery-item" data-file="lex2_signo_dolar"><span class="file-icon">◇</span>lex2_signo_dolar</div>
-          <div class="gallery-item" data-file="lex3_porcentaje"><span class="file-icon">◇</span>lex3_porcentaje</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex1_caracter_desconocido.scara"><span class="file-icon">◇</span>lex1_caracter_desconocido</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex2_signo_dolar.scara"><span class="file-icon">◇</span>lex2_signo_dolar</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex3_porcentaje.scara"><span class="file-icon">◇</span>lex3_porcentaje</div>
         </div>
-
         <div class="sidebar-divider"></div>
-
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-syn"></span>Errores Sintácticos</div>
-          <div class="gallery-item" data-file="sint1_while_sin_end"><span class="file-icon">◇</span>sint1_while_sin_end</div>
-          <div class="gallery-item" data-file="sint2_point_incompleto"><span class="file-icon">◇</span>sint2_point_incompleto</div>
-          <div class="gallery-item" data-file="sint3_sin_nombre"><span class="file-icon">◇</span>sint3_sin_nombre</div>
-          <div class="gallery-item" data-file="sint4_var_sin_valor"><span class="file-icon">◇</span>sint4_var_sin_valor</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint1_while_sin_end.scara"><span class="file-icon">◇</span>sint1_while_sin_end</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint2_point_incompleto.scara"><span class="file-icon">◇</span>sint2_point_incompleto</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint3_sin_nombre.scara"><span class="file-icon">◇</span>sint3_sin_nombre</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint4_var_sin_valor.scara"><span class="file-icon">◇</span>sint4_var_sin_valor</div>
         </div>
-
         <div class="sidebar-divider"></div>
-
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-sem"></span>Errores Semánticos</div>
-          <div class="gallery-item" data-file="es1_var_no_declarada"><span class="file-icon">◇</span>es1_var_no_declarada</div>
-          <div class="gallery-item" data-file="es2_punto_no_declarado"><span class="file-icon">◇</span>es2_punto_no_declarado</div>
-          <div class="gallery-item" data-file="es3_var_como_point"><span class="file-icon">◇</span>es3_var_como_point</div>
-          <div class="gallery-item" data-file="es4_duplicado"><span class="file-icon">◇</span>es4_duplicado</div>
-          <div class="gallery-item" data-file="es5_asignar_point"><span class="file-icon">◇</span>es5_asignar_point</div>
-          <div class="gallery-item" data-file="es6_speed"><span class="file-icon">◇</span>es6_speed</div>
-          <div class="gallery-item" data-file="es7_repeat"><span class="file-icon">◇</span>es7_repeat</div>
-          <div class="gallery-item" data-file="es8_rango"><span class="file-icon">◇</span>es8_rango</div>
-          <div class="gallery-item" data-file="es9_wait"><span class="file-icon">◇</span>es9_wait</div>
-          <div class="gallery-item" data-file="es10_runtime_move"><span class="file-icon">◇</span>es10_runtime_move</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es1_var_no_declarada.scara"><span class="file-icon">◇</span>es1_var_no_declarada</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es2_punto_no_declarado.scara"><span class="file-icon">◇</span>es2_punto_no_declarado</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es3_var_como_point.scara"><span class="file-icon">◇</span>es3_var_como_point</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es4_duplicado.scara"><span class="file-icon">◇</span>es4_duplicado</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es5_asignar_point.scara"><span class="file-icon">◇</span>es5_asignar_point</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es6_speed.scara"><span class="file-icon">◇</span>es6_speed</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es7_repeat.scara"><span class="file-icon">◇</span>es7_repeat</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es8_rango.scara"><span class="file-icon">◇</span>es8_rango</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es9_wait.scara"><span class="file-icon">◇</span>es9_wait</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es10_runtime_move_fuera_alcance.scara"><span class="file-icon">◇</span>es10_runtime_move</div>
         </div>
-
       </div>
     </div>
 
-    <!-- ── Vista: Carpeta ── -->
+    <!-- Vista: Carpeta -->
     <div class="sidebar-view" id="view-folder">
       <div class="folder-view-inner">
-
-        <!-- Zona de apertura -->
-        <div id="folder-drop-zone" class="folder-drop-zone" title="Hacer clic para seleccionar carpeta">
-          <svg viewBox="0 0 16 16" fill="currentColor">
-            <path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/>
-          </svg>
-          <p><strong>Abrir carpeta</strong><br>Clic para seleccionar<br>una carpeta con archivos <strong>.scara</strong></p>
+        <div id="folder-drop-zone" class="folder-drop-zone">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/></svg>
+          <p><strong>Abrir carpeta</strong><br>Clic para seleccionar<br>archivos <strong>.scara</strong></p>
         </div>
         <input type="file" id="folder-input" webkitdirectory multiple style="display:none">
-
-        <!-- Info de la carpeta abierta (oculto hasta seleccionar) -->
         <div class="folder-info" id="folder-info" style="display:none">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="color:var(--var);flex-shrink:0">
-            <path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/>
-          </svg>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="color:var(--var);flex-shrink:0"><path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/></svg>
           <span class="folder-name" id="folder-name">—</span>
           <span class="folder-count" id="folder-count">0 archivos</span>
         </div>
-
-        <!-- Lista de archivos -->
         <div class="folder-file-list" id="folder-file-list">
-          <div class="folder-empty">
-            Selecciona una carpeta<br>para ver sus archivos <code style="color:var(--kw)">.scara</code>
-          </div>
+          <div class="folder-empty">Selecciona una carpeta con archivos <code style="color:var(--kw)">.scara</code></div>
         </div>
-
       </div>
     </div>
-
   </aside>
 
   <!-- ══ EDITOR ══ -->
   <main class="editor-area">
     <div class="editor-tabs">
-      <div class="editor-tab active modified" id="current-tab">
-        <span id="current-filename">c1_pickandplace.scara</span>
+      <div class="editor-tab active modified">
+        <span id="current-filename">sin_titulo.scara</span>
         <span class="tab-dot"></span>
       </div>
     </div>
     <div class="editor-body">
       <div class="line-numbers" id="line-numbers"></div>
       <textarea class="editor-code" id="editor" spellcheck="false"
-        placeholder="Escribe código SCARA o selecciona un ejemplo...">PROGRAM pickandplace
-VAR i = 0
-POINT encima_caja = 150 200 50
-POINT caja = 150 200 0
-POINT encima_mesa = 300 150 50
-POINT mesa = 300 150 0
-SPEED 70
-SPEED 70
-WHILE i &lt; 3
-    MOVE encima_caja
-    APPROACH caja
-    CLOSE
-    CLOSE
-    DEPART 50
-    MOVE encima_mesa
-    APPROACH mesa
-    OPEN
-    DEPART 50
-    i = i + 1
-END
-PRINT "Ciclo completado"
-END</textarea>
+        placeholder="Escribe código SCARA o selecciona un ejemplo de la galería..."></textarea>
     </div>
   </main>
 
   <!-- ══ OUTPUT PANEL ══ -->
   <section class="output-panel">
     <div class="output-tabs">
-      <div class="output-tab active" data-tab="compile">
-        Compilación
-        <span class="tab-badge ok" id="badge-compile">✓</span>
-      </div>
-      <div class="output-tab" data-tab="bytecode">
-        Bytecode
-        <span class="tab-badge" id="badge-bytecode">19</span>
-      </div>
-      <div class="output-tab" data-tab="symbols">
-        Símbolos
-        <span class="tab-badge" id="badge-symbols">5</span>
-      </div>
+      <div class="output-tab active" data-tab="compile">Compilación <span class="tab-badge" id="badge-compile">—</span></div>
+      <div class="output-tab" data-tab="bytecode">Bytecode <span class="tab-badge" id="badge-bytecode">—</span></div>
+      <div class="output-tab" data-tab="symbols">Símbolos <span class="tab-badge" id="badge-symbols">—</span></div>
     </div>
 
-    <!-- ── Panel: Compilación ── -->
+    <!-- Compilación -->
     <div class="tab-panel active" id="panel-compile">
       <div class="output-content">
-        <div class="compile-result">
-          <div class="result-header result-ok">✓ &nbsp;Compilación exitosa — pickandplace</div>
-          <div class="result-stats">
-            <div class="stat-card">
-              <div class="stat-label">Instrucciones</div>
-              <div class="stat-value" style="color:var(--kw)">19</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Símbolos</div>
-              <div class="stat-value" style="color:var(--point)">5</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Optimizadas</div>
-              <div class="stat-value" style="color:var(--success)">2</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Errores</div>
-              <div class="stat-value" style="color:var(--text-muted)">0</div>
-            </div>
-          </div>
-          <div class="section-title">Salida del compilador</div>
-          <div class="output-raw">=== Compilacion exitosa ===
-Programa  : pickandplace
-Instruc.  : 19  (21 antes de optimizar)
-Simbolos  : 5   (1 VAR, 4 POINT)
-Optimiz.  : 2 instrucciones eliminadas
-            - SPEED 70 redundante (lin. 8)
-            - CLOSE redundante (lin. 13)
-
-Generado  : temp\input.asm
-            temp\input.exe</div>
+        <div class="compile-result" id="compile-result">
+          <div class="result-header result-idle">Escribe código y presiona <strong>Compilar</strong> (Ctrl+Enter)</div>
         </div>
       </div>
     </div>
 
-    <!-- ── Panel: Bytecode (Inicial + Optimizado) ── -->
+    <!-- Bytecode -->
     <div class="tab-panel" id="panel-bytecode">
       <div class="bytecode-panel">
-
-        <!-- Sub-tabs -->
         <div class="bytecode-sub-tabs">
           <div class="bytecode-sub-tab active" data-sub="inicial">
-            Bytecode Inicial
-            <span class="bytecode-sub-badge bsb-inicial">21</span>
+            Bytecode Inicial <span class="bytecode-sub-badge bsb-inicial" id="bsb-inicial">—</span>
           </div>
           <div class="bytecode-sub-tab" data-sub="optimizado">
-            Bytecode Optimizado
-            <span class="bytecode-sub-badge bsb-opt">19  −2</span>
+            Bytecode Optimizado <span class="bytecode-sub-badge bsb-opt" id="bsb-opt">—</span>
           </div>
         </div>
-
-        <!-- Sub-panel: Inicial -->
         <div class="bytecode-sub-panel active" id="sub-inicial">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="cell-idx">#</th>
-                <th>Opcode</th>
-                <th class="cell-num">arg1</th>
-                <th class="cell-num">arg2</th>
-                <th class="cell-num">arg3</th>
-                <th>Destino / sval</th>
-                <th>Op.Izq</th>
-                <th>Op.Der</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td class="cell-idx">0</td><td><span class="opcode-badge op-assign">OP_VAR</span></td><td class="cell-num">0</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-var">i</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">1</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">150</td><td class="cell-num">200</td><td class="cell-num">50</td><td class="cell-name">encima_caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">2</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">150</td><td class="cell-num">200</td><td class="cell-num">0</td><td class="cell-name">caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">3</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">300</td><td class="cell-num">150</td><td class="cell-num">50</td><td class="cell-name">encima_mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">4</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">300</td><td class="cell-num">150</td><td class="cell-num">0</td><td class="cell-name">mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <!-- SPEED redundante -->
-              <tr class="row-kept"><td class="cell-idx">5</td><td><span class="opcode-badge op-other">OP_SPEED</span></td><td class="cell-num">70</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr class="row-removed"><td class="cell-idx">6</td><td><span class="opcode-badge op-other">OP_SPEED</span><span class="removed-badge">eliminado</span></td><td class="cell-num">70</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">7</td><td><span class="opcode-badge op-flow">OP_WHILE</span></td><td class="cell-num">3</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-var">i</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">8</td><td><span class="opcode-badge op-move">OP_MOVE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">encima_caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">9</td><td><span class="opcode-badge op-move">OP_APPROACH</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <!-- CLOSE redundante -->
-              <tr class="row-kept"><td class="cell-idx">10</td><td><span class="opcode-badge op-io">OP_CLOSE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr class="row-removed"><td class="cell-idx">11</td><td><span class="opcode-badge op-io">OP_CLOSE</span><span class="removed-badge">eliminado</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">12</td><td><span class="opcode-badge op-move">OP_DEPART</span></td><td class="cell-num">50</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">13</td><td><span class="opcode-badge op-move">OP_MOVE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">encima_mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">14</td><td><span class="opcode-badge op-move">OP_APPROACH</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">15</td><td><span class="opcode-badge op-io">OP_OPEN</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">16</td><td><span class="opcode-badge op-move">OP_DEPART</span></td><td class="cell-num">50</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">17</td><td><span class="opcode-badge op-assign">OP_ASSIGN</span></td><td class="cell-num">1</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-var">i</td><td class="cell-var">i</td><td class="cell-num">1</td></tr>
-              <tr><td class="cell-idx">18</td><td><span class="opcode-badge op-flow">OP_END_WHILE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">19</td><td><span class="opcode-badge op-other">OP_PRINT</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-str">"Ciclo completado"</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">20</td><td><span class="opcode-badge op-halt">OP_HALT</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-            </tbody>
-          </table>
+          <div class="empty-table">Compila el programa para ver el bytecode generado</div>
         </div>
-
-        <!-- Sub-panel: Optimizado -->
         <div class="bytecode-sub-panel" id="sub-optimizado">
-          <div class="opt-diff-banner">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
-            2 instrucciones eliminadas por el optimizador
-            <span>— SPEED redundante (lín. 8) · CLOSE redundante (lín. 13)</span>
-          </div>
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="cell-idx">#</th>
-                <th>Opcode</th>
-                <th class="cell-num">arg1</th>
-                <th class="cell-num">arg2</th>
-                <th class="cell-num">arg3</th>
-                <th>Destino / sval</th>
-                <th>Op.Izq</th>
-                <th>Op.Der</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td class="cell-idx">0</td><td><span class="opcode-badge op-assign">OP_VAR</span></td><td class="cell-num">0</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-var">i</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">1</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">150</td><td class="cell-num">200</td><td class="cell-num">50</td><td class="cell-name">encima_caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">2</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">150</td><td class="cell-num">200</td><td class="cell-num">0</td><td class="cell-name">caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">3</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">300</td><td class="cell-num">150</td><td class="cell-num">50</td><td class="cell-name">encima_mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">4</td><td><span class="opcode-badge op-assign">OP_POINT</span></td><td class="cell-num">300</td><td class="cell-num">150</td><td class="cell-num">0</td><td class="cell-name">mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">5</td><td><span class="opcode-badge op-other">OP_SPEED</span></td><td class="cell-num">70</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">6</td><td><span class="opcode-badge op-flow">OP_WHILE</span></td><td class="cell-num">3</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-var">i</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">7</td><td><span class="opcode-badge op-move">OP_MOVE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">encima_caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">8</td><td><span class="opcode-badge op-move">OP_APPROACH</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">caja</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">9</td><td><span class="opcode-badge op-io">OP_CLOSE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">10</td><td><span class="opcode-badge op-move">OP_DEPART</span></td><td class="cell-num">50</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">11</td><td><span class="opcode-badge op-move">OP_MOVE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">encima_mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">12</td><td><span class="opcode-badge op-move">OP_APPROACH</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-name">mesa</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">13</td><td><span class="opcode-badge op-io">OP_OPEN</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">14</td><td><span class="opcode-badge op-move">OP_DEPART</span></td><td class="cell-num">50</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">15</td><td><span class="opcode-badge op-assign">OP_ASSIGN</span></td><td class="cell-num">1</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-var">i</td><td class="cell-var">i</td><td class="cell-num">1</td></tr>
-              <tr><td class="cell-idx">16</td><td><span class="opcode-badge op-flow">OP_END_WHILE</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">17</td><td><span class="opcode-badge op-other">OP_PRINT</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-str">"Ciclo completado"</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-              <tr><td class="cell-idx">18</td><td><span class="opcode-badge op-halt">OP_HALT</span></td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty cell-num">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td><td class="cell-empty">—</td></tr>
-            </tbody>
-          </table>
+          <div class="empty-table">Compila el programa para ver el bytecode optimizado</div>
         </div>
-
       </div>
     </div>
 
-    <!-- ── Panel: Símbolos ── -->
+    <!-- Símbolos -->
     <div class="tab-panel" id="panel-symbols">
-      <div class="output-content no-pad">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="cell-idx">#</th>
-              <th>Nombre</th>
-              <th>Tipo</th>
-              <th>Valor / Coordenadas</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td class="cell-idx">0</td><td class="cell-var">i</td><td><span class="sym-type-var">VAR</span></td><td><span class="cell-num">0</span></td></tr>
-            <tr>
-              <td class="cell-idx">1</td><td class="cell-name">encima_caja</td><td><span class="sym-type-point">POINT</span></td>
-              <td><div class="sym-coords"><span class="coord-tag coord-x">X 150</span><span class="coord-tag coord-y">Y 200</span><span class="coord-tag coord-z">Z 50</span></div></td>
-            </tr>
-            <tr>
-              <td class="cell-idx">2</td><td class="cell-name">caja</td><td><span class="sym-type-point">POINT</span></td>
-              <td><div class="sym-coords"><span class="coord-tag coord-x">X 150</span><span class="coord-tag coord-y">Y 200</span><span class="coord-tag coord-z">Z 0</span></div></td>
-            </tr>
-            <tr>
-              <td class="cell-idx">3</td><td class="cell-name">encima_mesa</td><td><span class="sym-type-point">POINT</span></td>
-              <td><div class="sym-coords"><span class="coord-tag coord-x">X 300</span><span class="coord-tag coord-y">Y 150</span><span class="coord-tag coord-z">Z 50</span></div></td>
-            </tr>
-            <tr>
-              <td class="cell-idx">4</td><td class="cell-name">mesa</td><td><span class="sym-type-point">POINT</span></td>
-              <td><div class="sym-coords"><span class="coord-tag coord-x">X 300</span><span class="coord-tag coord-y">Y 150</span><span class="coord-tag coord-z">Z 0</span></div></td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="output-content no-pad" id="symbols-content">
+        <div class="empty-table">Compila el programa para ver la tabla de símbolos</div>
       </div>
     </div>
-
   </section>
 
-  <!-- ══ STATUS BAR ══ -->
+  <!-- Status bar -->
   <footer class="status-bar">
     <span class="status-item">SCARA IDE v1.0</span>
     <span class="status-sep"></span>
@@ -859,155 +467,576 @@ Generado  : temp\input.asm
     <span class="status-sep"></span>
     <span class="status-item">UTF-8</span>
     <span class="status-sep"></span>
-    <span class="status-item">localhost:8080</span>
+    <span class="status-item" id="status-server">localhost:8080</span>
     <div class="status-right status-item">
-      <span class="status-dot"></span>
-      Servidor activo
+      <span class="status-dot" id="server-dot"></span>
+      <span id="server-label">Servidor activo</span>
     </div>
   </footer>
+</div>
 
-</div><!-- /.app -->
+<div class="toast" id="toast"></div>
 
 <script>
-  /* ── Tabs de salida ── */
-  document.querySelectorAll('.output-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab;
-      document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('panel-' + target).classList.add('active');
-    });
-  });
+/* ══════════════════════════════════════════════════════════════
+   UTILIDADES
+   ══════════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
-  /* ── Sub-tabs de bytecode ── */
-  document.querySelectorAll('.bytecode-sub-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.sub;
-      document.querySelectorAll('.bytecode-sub-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.bytecode-sub-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('sub-' + target).classList.add('active');
-    });
-  });
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' toast-' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
 
-  /* ── Toggle Galería / Carpeta ── */
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.mode;
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.sidebar-view').forEach(v => v.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('view-' + mode).classList.add('active');
-    });
-  });
+/* ══════════════════════════════════════════════════════════════
+   PARSING DEL OUTPUT DE scara.exe
+   ══════════════════════════════════════════════════════════════ */
 
-  /* ── Galería: selección de ítem ── */
-  document.querySelectorAll('.gallery-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      const name = item.dataset.file || item.textContent.trim();
-      document.getElementById('current-filename').textContent = name + '.scara';
-    });
-  });
+/* Extrae el bloque de texto correspondiente a una sección "=== NAME ===" */
+function getSection(text, name) {
+  const marker = '=== ' + name + ' ===';
+  const start  = text.indexOf(marker);
+  if (start === -1) return '';
+  const after = text.slice(start + marker.length);
+  /* La siguiente sección empieza con \n=== */
+  const end = after.indexOf('\n===');
+  return end === -1 ? after : after.slice(0, end);
+}
 
-  /* ── Carpeta: abrir con input[file] ── */
-  const folderInput    = document.getElementById('folder-input');
-  const folderDropZone = document.getElementById('folder-drop-zone');
-  const folderInfo     = document.getElementById('folder-info');
-  const folderName     = document.getElementById('folder-name');
-  const folderCount    = document.getElementById('folder-count');
-  const folderFileList = document.getElementById('folder-file-list');
+/*
+ * Tabla de símbolos: formato "%-15s %-8s %-6d %-6d %-6d"
+ * Cols: NAME(0-14) TYPE(16-23) VAL1(25-30) VAL2(32-37) VAL3(39-44)
+ */
+function parseSymbols(text) {
+  const section = getSection(text, 'TABLA DE SIMBOLOS');
+  if (!section) return [];
+  /* slice(3) = saltar: línea vacía, cabecera de columnas, línea de guiones */
+  const lines = section.split('\n').slice(3);
+  const syms  = [];
+  for (const line of lines) {
+    if (!line.trim() || line.startsWith('=')) break;
+    const name = line.substring(0, 15).trim();
+    const type = line.substring(16, 24).trim();
+    const v1   = parseInt(line.substring(25, 31)) || 0;
+    const v2   = parseInt(line.substring(32, 38)) || 0;
+    const v3   = parseInt(line.substring(39, 45)) || 0;
+    if (name) syms.push({ name, type, v1, v2, v3 });
+  }
+  return syms;
+}
 
-  folderDropZone.addEventListener('click', () => folderInput.click());
+/*
+ * Bytecode: formato "%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s"
+ * PC(0-3) OPCODE(5-18) ARG1(20-25) ARG2(27-32) ARG3(34-39)
+ * FLAGS(41-45) SVAL(47+, split by 2+ spaces para soportar strings con espacios)
+ */
+function parseBytecode(text, sectionName) {
+  const section = getSection(text, sectionName);
+  if (!section) return [];
+  const lines  = section.split('\n').slice(3); /* vacío, cabecera, guiones */
+  const instrs = [];
+  for (const line of lines) {
+    if (!line.trim() || line.startsWith('=') || line.startsWith('[GEN]')) break;
+    const pc = parseInt(line.substring(0, 4).trim());
+    if (isNaN(pc)) continue;
+    const opcode = line.substring(5, 19).trim();
+    if (!opcode) continue;
+    const arg1  = parseInt(line.substring(20, 26)) || 0;
+    const arg2  = parseInt(line.substring(27, 33)) || 0;
+    const arg3  = parseInt(line.substring(34, 40)) || 0;
+    const flags = parseInt(line.substring(41, 46)) || 0;
+    /* sval puede ser un string con espacios → spliteamos el resto */
+    const rest  = line.length > 47 ? line.substring(47).trimEnd() : '';
+    const parts = rest ? rest.split(/\s{2,}/) : [];
+    const sval  = (parts[0] || '').trim();
+    const sval2 = (parts[1] || '').trim();
+    const sval3 = (parts[2] || '').trim();
+    instrs.push({ pc, opcode, arg1, arg2, arg3, flags, sval, sval2, sval3 });
+  }
+  return instrs;
+}
 
-  folderInput.addEventListener('change', () => {
-    const files = Array.from(folderInput.files)
-      .filter(f => f.name.endsWith('.scara'))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    /* Nombre de la carpeta: tomamos la primera parte del webkitRelativePath */
-    const dirName = folderInput.files[0]
-      ? folderInput.files[0].webkitRelativePath.split('/')[0]
-      : '—';
-
-    folderName.textContent  = dirName;
-    folderCount.textContent = files.length + ' archivo' + (files.length !== 1 ? 's' : '');
-    folderInfo.style.display = 'flex';
-    folderDropZone.style.display = 'none';
-
-    if (files.length === 0) {
-      folderFileList.innerHTML =
-        '<div class="folder-empty">No se encontraron archivos <code style="color:var(--kw)">.scara</code> en esta carpeta.</div>';
-      return;
+/*
+ * Errores léxicos/sintácticos/semánticos:
+ *   >>> ERROR LEXICO
+ *       Linea N: mensaje
+ *
+ *       | linea fuente
+ *       | ^^^
+ */
+function parseErrors(text) {
+  const errors = [];
+  const lines  = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^>>> ERROR (LEXICO|SINTACTICO|SEMANTICO)/);
+    if (!m) continue;
+    const type  = m[1];
+    let lineno  = 0, msg = '', source = '', pointer = '';
+    if (i + 1 < lines.length) {
+      const lm = lines[i + 1].match(/\s+Linea\s+(\d+):\s*(.*)/);
+      if (lm) { lineno = parseInt(lm[1]); msg = lm[2].trim(); i++; }
     }
+    if (i + 1 < lines.length && !lines[i + 1].trim()) i++; /* línea vacía */
+    if (i + 1 < lines.length) {
+      const sm = lines[i + 1].match(/\s+\|\s?(.*)/);
+      if (sm) { source = sm[1]; i++; }
+    }
+    if (i + 1 < lines.length) {
+      const pm = lines[i + 1].match(/\s+\|\s?(.*)/);
+      if (pm) { pointer = pm[1]; i++; }
+    }
+    errors.push({ type, lineno, msg, source, pointer });
+  }
+  return errors;
+}
 
-    folderFileList.innerHTML = files.map((f, idx) => `
-      <div class="folder-file-item" data-idx="${idx}" title="${f.name}">
-        <span class="fext">.scara</span>
-        ${f.name.replace(/\.scara$/, '')}
-      </div>`).join('');
+/* ══════════════════════════════════════════════════════════════
+   RENDERING
+   ══════════════════════════════════════════════════════════════ */
 
-    /* Cargar archivo al hacer clic */
-    folderFileList.querySelectorAll('.folder-file-item').forEach((item, idx) => {
-      item.addEventListener('click', () => {
-        folderFileList.querySelectorAll('.folder-file-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
+const OP_CLASS = {
+  OP_MOVE: 'op-move', OP_MOVEJ: 'op-move', OP_APPROACH: 'op-move',
+  OP_DEPART: 'op-move', OP_HOME: 'op-move',
+  OP_OPEN: 'op-io', OP_CLOSE: 'op-io',
+  OP_WHILE: 'op-flow', OP_END_WHILE: 'op-flow',
+  OP_IF: 'op-flow',    OP_ELSE: 'op-flow',    OP_END_IF: 'op-flow',
+  OP_REPEAT: 'op-flow', OP_END_REPEAT: 'op-flow',
+  OP_VAR: 'op-assign', OP_POINT: 'op-assign', OP_ASSIGN: 'op-assign',
+  OP_HALT: 'op-halt',
+};
+const POINT_OPS = new Set(['OP_MOVE','OP_MOVEJ','OP_APPROACH','OP_POINT']);
 
-        const file = files[idx];
-        document.getElementById('current-filename').textContent = file.name;
+function opcodeClass(op) { return OP_CLASS[op] || 'op-other'; }
 
-        const reader = new FileReader();
-        reader.onload = e => {
-          editor.value = e.target.result;
-          updateLineNumbers();
-          updateCursor();
-        };
-        reader.readAsText(file);
-      });
+function cellSval(v, opcode, field) {
+  if (!v) return '<td class="cell-empty">—</td>';
+  if (opcode === 'OP_PRINT') return `<td class="cell-str">${esc(v)}</td>`;
+  if (field === 'sval' && POINT_OPS.has(opcode)) return `<td class="cell-name">${esc(v)}</td>`;
+  if (/^\d+$/.test(v)) return `<td class="cell-num">${esc(v)}</td>`;
+  return `<td class="cell-var">${esc(v)}</td>`;
+}
+
+function cellNum(v) {
+  return v !== 0
+    ? `<td class="cell-num">${v}</td>`
+    : `<td class="cell-empty cell-num">—</td>`;
+}
+
+function renderBytecodeTable(instrs) {
+  if (!instrs.length)
+    return '<div class="empty-table">Sin instrucciones en esta sección</div>';
+  const rows = instrs.map(ins => `<tr>
+    <td class="cell-idx">${ins.pc}</td>
+    <td><span class="opcode-badge ${opcodeClass(ins.opcode)}">${esc(ins.opcode)}</span></td>
+    ${cellNum(ins.arg1)}${cellNum(ins.arg2)}${cellNum(ins.arg3)}
+    ${cellSval(ins.sval,  ins.opcode, 'sval')}
+    ${cellSval(ins.sval2, ins.opcode, 'sval2')}
+    ${cellSval(ins.sval3, ins.opcode, 'sval3')}
+  </tr>`).join('');
+  return `<table class="data-table">
+    <thead><tr>
+      <th class="cell-idx">#</th><th>Opcode</th>
+      <th class="cell-num">arg1</th><th class="cell-num">arg2</th><th class="cell-num">arg3</th>
+      <th>Destino / sval</th><th>Op.Izq</th><th>Op.Der</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderSymbolsTable(syms) {
+  if (!syms.length)
+    return '<div class="empty-table">No hay símbolos declarados</div>';
+  const rows = syms.map((s, i) => {
+    const isPoint = s.type === 'POINT';
+    const valHtml = isPoint
+      ? `<div class="sym-coords">
+           <span class="coord-tag coord-x">X ${s.v1}</span>
+           <span class="coord-tag coord-y">Y ${s.v2}</span>
+           <span class="coord-tag coord-z">Z ${s.v3}</span>
+         </div>`
+      : `<span class="cell-num">${s.v1}</span>`;
+    return `<tr>
+      <td class="cell-idx">${i}</td>
+      <td class="${isPoint ? 'cell-name' : 'cell-var'}">${esc(s.name)}</td>
+      <td><span class="${isPoint ? 'sym-type-point' : 'sym-type-var'}">${s.type}</span></td>
+      <td>${valHtml}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="data-table">
+    <thead><tr>
+      <th class="cell-idx">#</th><th>Nombre</th><th>Tipo</th><th>Valor / Coordenadas</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderErrorBlock(err) {
+  const typeLabel = { LEXICO: 'Error Léxico', SINTACTICO: 'Error Sintáctico', SEMANTICO: 'Error Semántico' };
+  const typeClass = { LEXICO: 'err-lexico',   SINTACTICO: 'err-sint',          SEMANTICO: 'err-sem' };
+  const pointerHtml = err.pointer
+    ? `<span class="error-source">${esc(err.source)}\n<span class="error-pointer">${esc(err.pointer)}</span></span>`
+    : (err.source ? `<span class="error-source">${esc(err.source)}</span>` : '');
+  return `<div class="error-block">
+    <div class="error-type-badge ${typeClass[err.type] || ''}">⚠ ${typeLabel[err.type] || err.type}</div>
+    ${err.lineno ? `<div class="error-lineno">Línea ${err.lineno}</div>` : ''}
+    <div class="error-msg">${esc(err.msg)}</div>
+    ${pointerHtml}
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER ALL — actualiza los 3 paneles con el resultado
+   ══════════════════════════════════════════════════════════════ */
+function renderAll(output, ok) {
+  const syms    = parseSymbols(output);
+  const inicial = parseBytecode(output, 'BYTECODE GENERADO');
+  const optim   = parseBytecode(output, 'BYTECODE OPTIMIZADO');
+  const errors  = parseErrors(output);
+  const eliminated = inicial.length - optim.length;
+
+  /* ── Badge de estado ── */
+  const badge = document.getElementById('status-badge');
+  if (ok) {
+    badge.className = 'badge badge-ok';
+    badge.textContent = '✓ Compilado';
+  } else {
+    badge.className = 'badge badge-error';
+    badge.textContent = '✗ Error';
+  }
+
+  /* ── Tab badges ── */
+  const badgeC = document.getElementById('badge-compile');
+  badgeC.textContent = errors.length > 0 ? errors.length : (ok ? '✓' : '!');
+  badgeC.className   = 'tab-badge ' + (ok ? 'ok' : 'err');
+
+  document.getElementById('badge-bytecode').textContent = optim.length || inicial.length || '—';
+  document.getElementById('badge-symbols').textContent  = syms.length || '—';
+
+  /* ── Sub-tab badges ── */
+  document.getElementById('bsb-inicial').textContent = inicial.length;
+  const bsbOpt = document.getElementById('bsb-opt');
+  bsbOpt.textContent = eliminated > 0 ? `${optim.length}  −${eliminated}` : String(optim.length);
+
+  /* ── Panel: Compilación ── */
+  const compileEl = document.getElementById('compile-result');
+  let html = '';
+  if (ok) {
+    html += `<div class="result-header result-ok">✓ &nbsp;Compilación exitosa</div>`;
+    html += `<div class="result-stats">
+      <div class="stat-card"><div class="stat-label">Instrucciones</div><div class="stat-value" style="color:var(--kw)">${optim.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Símbolos</div><div class="stat-value" style="color:var(--point)">${syms.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Optimizadas</div><div class="stat-value" style="color:var(--success)">${eliminated}</div></div>
+      <div class="stat-card"><div class="stat-label">Errores</div><div class="stat-value" style="color:var(--text-muted)">0</div></div>
+    </div>`;
+  } else {
+    const errCount = errors.length;
+    html += `<div class="result-header result-error">✗ &nbsp;Error de compilación${errCount ? ' — ' + errCount + ' error' + (errCount > 1 ? 'es' : '') : ''}</div>`;
+    if (errors.length) {
+      html += errors.map(renderErrorBlock).join('');
+    }
+  }
+  /* Output raw siempre visible (collapsable en fases futuras) */
+  html += `<div class="section-title">Salida del compilador</div>
+            <div class="output-raw">${esc(output)}</div>`;
+  compileEl.innerHTML = html;
+
+  /* ── Panel: Bytecode ── */
+  document.getElementById('sub-inicial').innerHTML   = renderBytecodeTable(inicial);
+
+  let optHtml = '';
+  if (eliminated > 0) {
+    optHtml += `<div class="opt-diff-banner">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+      ${eliminated} instrucción${eliminated > 1 ? 'es eliminadas' : ' eliminada'} por el optimizador
+      <span>(${inicial.length} → ${optim.length})</span>
+    </div>`;
+  }
+  optHtml += renderBytecodeTable(optim);
+  document.getElementById('sub-optimizado').innerHTML = optHtml;
+
+  /* ── Panel: Símbolos ── */
+  document.getElementById('symbols-content').innerHTML = renderSymbolsTable(syms);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   API: COMPILAR
+   ══════════════════════════════════════════════════════════════ */
+const btnCompile = document.getElementById('btn-compile');
+const btnRun     = document.getElementById('btn-run');
+const badge      = document.getElementById('status-badge');
+
+async function compilar() {
+  const code = document.getElementById('editor').value.trim();
+  if (!code) { showToast('El editor está vacío', 'error'); return; }
+
+  btnCompile.disabled = true;
+  btnCompile.innerHTML = '<span class="spinning">⟳</span> Compilando...';
+  badge.className = 'badge badge-busy';
+  badge.textContent = '⟳ Compilando';
+
+  try {
+    const res = await fetch('/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
     });
-  });
-
-  /* ── Editor: numeración y cursor ── */
-  const editor       = document.getElementById('editor');
-  const lineNums     = document.getElementById('line-numbers');
-  const statusCursor = document.getElementById('status-cursor');
-
-  function updateLineNumbers() {
-    const count = editor.value.split('\n').length;
-    let html = '';
-    for (let i = 1; i <= count; i++) html += `<span>${i}</span>`;
-    lineNums.innerHTML = html;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { ok, output } = await res.json();
+    renderAll(output, ok);
+    showToast(ok ? '✓ Compilación exitosa' : '✗ Error de compilación', ok ? 'ok' : 'error');
+  } catch (e) {
+    badge.className = 'badge badge-error';
+    badge.textContent = '✗ Sin servidor';
+    document.getElementById('compile-result').innerHTML =
+      `<div class="result-header result-error">No se pudo conectar con el servidor en localhost:8080.<br>¿Está corriendo server.exe?</div>`;
+    showToast('Sin conexión con el servidor', 'error');
+  } finally {
+    btnCompile.disabled = false;
+    btnCompile.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2v12l8-6-8-6z"/></svg> Compilar`;
   }
+}
 
-  function updateCursor() {
-    const text = editor.value.substring(0, editor.selectionStart);
-    const line = text.split('\n').length;
-    const col  = text.split('\n').pop().length + 1;
-    statusCursor.textContent = `Línea ${line}, Col ${col}`;
+/* ══════════════════════════════════════════════════════════════
+   API: EJECUTAR
+   ══════════════════════════════════════════════════════════════ */
+async function ejecutar() {
+  btnRun.disabled = true;
+  btnRun.innerHTML = '<span class="spinning">⟳</span>';
+  try {
+    const res  = await fetch('/run');
+    const data = await res.json();
+    showToast(data.ok ? '▶ Visualizador lanzado' : '✗ No se pudo ejecutar', data.ok ? 'ok' : 'error');
+  } catch {
+    showToast('Sin conexión con el servidor', 'error');
+  } finally {
+    btnRun.disabled = false;
+    btnRun.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2l10 6L3 14V2z"/></svg> Ejecutar`;
   }
+}
 
-  editor.addEventListener('input',  updateLineNumbers);
-  editor.addEventListener('keyup',  updateCursor);
-  editor.addEventListener('click',  updateCursor);
-  editor.addEventListener('scroll', () => { lineNums.scrollTop = editor.scrollTop; });
+/* ══════════════════════════════════════════════════════════════
+   API: CARGAR EJEMPLO DE GALERÍA
+   ══════════════════════════════════════════════════════════════ */
+async function cargarEjemplo(path, item) {
+  item.classList.add('loading');
+  try {
+    const res = await fetch('/examples/' + path);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const code = await res.text();
+    const editor = document.getElementById('editor');
+    editor.value = code;
+    updateLineNumbers();
+    updateCursor();
+    /* Nombre del archivo en la pestaña del editor */
+    const filename = path.split('/').pop();
+    document.getElementById('current-filename').textContent = filename;
+    showToast('Cargado: ' + filename, 'ok');
+    /* Cambiar selección */
+    document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  } catch {
+    showToast('No se pudo cargar el ejemplo (¿servidor activo?)', 'error');
+  } finally {
+    item.classList.remove('loading');
+  }
+}
 
-  /* Corregir entidad HTML del textarea inicial */
-  editor.value = editor.value.replace(/&lt;/g, '<');
+/* ══════════════════════════════════════════════════════════════
+   NUEVO ARCHIVO
+   ══════════════════════════════════════════════════════════════ */
+document.getElementById('btn-new').addEventListener('click', () => {
+  document.getElementById('editor').value = '';
+  document.getElementById('current-filename').textContent = 'sin_titulo.scara';
+  document.querySelectorAll('.gallery-item, .folder-file-item').forEach(i => i.classList.remove('active'));
   updateLineNumbers();
   updateCursor();
+});
 
-  /* Tab → 4 espacios */
-  editor.addEventListener('keydown', e => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const s = editor.selectionStart, end = editor.selectionEnd;
-      editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(end);
-      editor.selectionStart = editor.selectionEnd = s + 4;
-      updateLineNumbers();
-    }
+/* ══════════════════════════════════════════════════════════════
+   EVENTOS DE BOTONES
+   ══════════════════════════════════════════════════════════════ */
+btnCompile.addEventListener('click', compilar);
+btnRun.addEventListener('click', ejecutar);
+
+/* Ctrl+Enter → compilar */
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); compilar(); }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   TABS DEL PANEL DE SALIDA
+   ══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.output-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + target).classList.add('active');
   });
+});
+
+/* SUB-TABS DE BYTECODE */
+document.querySelectorAll('.bytecode-sub-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.sub;
+    document.querySelectorAll('.bytecode-sub-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.bytecode-sub-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('sub-' + target).classList.add('active');
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   TOGGLE GALERÍA / CARPETA
+   ══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.sidebar-view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + mode).classList.add('active');
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   GALERÍA — clic en ítem carga el archivo desde el servidor
+   ══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.gallery-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const path = item.dataset.path;
+    if (path) cargarEjemplo(path, item);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   CARPETA LOCAL — File API (sin servidor)
+   ══════════════════════════════════════════════════════════════ */
+const folderInput    = document.getElementById('folder-input');
+const folderDropZone = document.getElementById('folder-drop-zone');
+
+folderDropZone.addEventListener('click', () => folderInput.click());
+
+folderInput.addEventListener('change', () => {
+  const allFiles = Array.from(folderInput.files);
+  const files    = allFiles.filter(f => f.name.endsWith('.scara'))
+                           .sort((a, b) => a.name.localeCompare(b.name));
+
+  const dirName  = allFiles[0]
+    ? allFiles[0].webkitRelativePath.split('/')[0]
+    : '—';
+
+  document.getElementById('folder-name').textContent  = dirName;
+  document.getElementById('folder-count').textContent = files.length + ' archivo' + (files.length !== 1 ? 's' : '');
+  document.getElementById('folder-info').style.display = 'flex';
+  folderDropZone.style.display = 'none';
+
+  const listEl = document.getElementById('folder-file-list');
+  if (!files.length) {
+    listEl.innerHTML = '<div class="folder-empty">No se encontraron archivos <code style="color:var(--kw)">.scara</code></div>';
+    return;
+  }
+
+  listEl.innerHTML = files.map((f, i) =>
+    `<div class="folder-file-item" data-idx="${i}">
+       <span class="fext">.scara</span>
+       ${esc(f.name.replace(/\.scara$/, ''))}
+     </div>`
+  ).join('');
+
+  listEl.querySelectorAll('.folder-file-item').forEach((item, idx) => {
+    item.addEventListener('click', () => {
+      listEl.querySelectorAll('.folder-file-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('current-filename').textContent = files[idx].name;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('editor').value = e.target.result;
+        updateLineNumbers();
+        updateCursor();
+        showToast('Cargado: ' + files[idx].name, 'ok');
+      };
+      reader.readAsText(files[idx]);
+    });
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   EDITOR — numeración y cursor
+   ══════════════════════════════════════════════════════════════ */
+const editor       = document.getElementById('editor');
+const lineNums     = document.getElementById('line-numbers');
+const statusCursor = document.getElementById('status-cursor');
+
+function updateLineNumbers() {
+  const count = editor.value.split('\n').length;
+  let html = '';
+  for (let i = 1; i <= count; i++) html += `<span>${i}</span>`;
+  lineNums.innerHTML = html;
+}
+
+function updateCursor() {
+  const text = editor.value.substring(0, editor.selectionStart);
+  const line = text.split('\n').length;
+  const col  = text.split('\n').pop().length + 1;
+  statusCursor.textContent = `Línea ${line}, Col ${col}`;
+}
+
+editor.addEventListener('input',  updateLineNumbers);
+editor.addEventListener('keyup',  updateCursor);
+editor.addEventListener('click',  updateCursor);
+editor.addEventListener('scroll', () => { lineNums.scrollTop = editor.scrollTop; });
+
+/* Tab → 4 espacios */
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart, end = editor.selectionEnd;
+    editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(end);
+    editor.selectionStart = editor.selectionEnd = s + 4;
+    updateLineNumbers();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   VERIFICAR SERVIDOR AL INICIO
+   ══════════════════════════════════════════════════════════════ */
+(async () => {
+  try {
+    const r = await fetch('/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'PROGRAM _ping\nEND\n' }),
+      signal: AbortSignal.timeout(2000),
+    });
+    if (r.ok) {
+      document.getElementById('server-dot').style.background = 'var(--success)';
+      document.getElementById('server-label').textContent = 'Servidor activo';
+      /* Cargar el primer ejemplo automáticamente */
+      const firstItem = document.querySelector('.gallery-item[data-path]');
+      if (firstItem) cargarEjemplo(firstItem.dataset.path, firstItem);
+    }
+  } catch {
+    document.getElementById('server-dot').style.background = 'var(--err)';
+    document.getElementById('server-dot').style.boxShadow  = '0 0 5px var(--err)';
+    document.getElementById('server-label').textContent = 'Servidor inactivo';
+    document.getElementById('status-badge').className   = 'badge badge-error';
+    document.getElementById('status-badge').textContent = '✗ Sin servidor';
+  }
+  updateLineNumbers();
+  updateCursor();
+})();
 </script>
 </body>
 </html>

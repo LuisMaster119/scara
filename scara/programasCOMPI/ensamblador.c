@@ -31,11 +31,29 @@
 #define MAX_CODE           256
 #define APPROACH_CLEARANCE 50
 
-typedef struct { int x, y, z, pinza, velocidad; } Estado;
+/* Tipos de evento para keyframes */
+#define KF_NONE     0
+#define KF_HOME     1
+#define KF_MOVE     2
+#define KF_MOVEJ    3
+#define KF_APPROACH 4
+#define KF_DEPART   5
+#define KF_OPEN     6
+#define KF_CLOSE    7
+#define KF_SPEED    8
+#define KF_WAIT     9
+
+typedef struct { int x, y, z, pinza, velocidad; int evento; } Estado;
 typedef struct { char nombre[64]; int valor; int usado; } Var;
 
 static Estado traza[MAX_TRAZA];
 static int    traza_len = 0;
+
+/* Tabla de keyframes: indices en traza[] donde ocurre un evento importante */
+#define MAX_KF 512
+static int kf_idx[MAX_KF];
+static int kf_tipo[MAX_KF];
+static int kf_len = 0;
 
 static Var    vars[MAX_VARS];
 static int    pos_x = 0, pos_y = 0, pos_z = 0;
@@ -49,7 +67,16 @@ static void traza_push(void) {
     traza[traza_len].z         = pos_z;
     traza[traza_len].pinza     = pinza;
     traza[traza_len].velocidad = vel;
+    traza[traza_len].evento    = KF_NONE;
     traza_len++;
+}
+
+/* Registra el indice actual como keyframe ANTES del proximo push */
+static void kf_push(int tipo) {
+    if (kf_len >= MAX_KF) return;
+    kf_idx[kf_len]  = traza_len;
+    kf_tipo[kf_len] = tipo;
+    kf_len++;
 }
 
 static int pasos_mov(void) {
@@ -176,7 +203,8 @@ static int precalcular_saltos(const Instruccion* prog, int len) {
 static int construir_traza(const Instruccion* prog, int len) {
     memset(vars, 0, sizeof(vars));
     pos_x = pos_y = pos_z = 0;
-    pinza = 1; vel = 100; traza_len = 0;
+    pinza = 1; vel = 100; traza_len = 0; kf_len = 0;
+    kf_push(KF_HOME);
     traza_push();  /* estado HOME inicial */
 
     if (!precalcular_saltos(prog, len)) return 0;
@@ -202,18 +230,20 @@ static int construir_traza(const Instruccion* prog, int len) {
                 break;
             }
 
-            case OP_SPEED:  vel = ins->arg1; traza_push(); break;
-            case OP_HOME:   pos_x = pos_y = pos_z = 0; traza_push(); break;
-            case OP_OPEN:   pinza = 1; traza_push(); break;
-            case OP_CLOSE:  pinza = 0; traza_push(); break;
+            case OP_SPEED:  kf_push(KF_SPEED);  vel = ins->arg1; traza_push(); break;
+            case OP_HOME:   kf_push(KF_HOME);   pos_x = pos_y = pos_z = 0; traza_push(); break;
+            case OP_OPEN:   kf_push(KF_OPEN);   pinza = 1; traza_push(); break;
+            case OP_CLOSE:  kf_push(KF_CLOSE);  pinza = 0; traza_push(); break;
 
             case OP_MOVE:
+                kf_push(KF_MOVE);
                 mover_hacia(ins->arg1, ins->arg2, ins->arg3, pasos_mov());
                 break;
 
             case OP_MOVEJ: {
                 int p  = pasos_mov();
                 int zs = (pos_z > ins->arg3 ? pos_z : ins->arg3) + APPROACH_CLEARANCE;
+                kf_push(KF_MOVEJ);
                 mover_hacia(pos_x,     pos_y,     zs,          p / 2);
                 mover_hacia(ins->arg1, ins->arg2, zs,          p);
                 mover_hacia(ins->arg1, ins->arg2, ins->arg3,   p / 2);
@@ -222,15 +252,18 @@ static int construir_traza(const Instruccion* prog, int len) {
 
             case OP_APPROACH: {
                 int zs = ins->arg3 + APPROACH_CLEARANCE;
+                kf_push(KF_APPROACH);
                 mover_hacia(ins->arg1, ins->arg2, zs,        pasos_mov());
                 mover_hacia(ins->arg1, ins->arg2, ins->arg3, pasos_mov());
                 break;
             }
 
             case OP_DEPART:
+                kf_push(KF_DEPART);
                 pos_z += ins->arg1; traza_push(); break;
 
             case OP_WAIT:
+                kf_push(KF_WAIT);
                 for (int w = 0; w < ins->arg1 * 3; w++) traza_push();
                 break;
 
@@ -318,6 +351,11 @@ void generar_traza_c(FILE* f) {
 
     for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].velocidad;
     emit_array_c(f, "traza_vel", tmp, traza_len);
+
+    /* Keyframes */
+    fprintf(f, "static const int TRAZA_KF_LEN = %d;\n\n", kf_len);
+    emit_array_c(f, "traza_kf",   kf_idx,  kf_len);
+    emit_array_c(f, "traza_kf_tipo", kf_tipo, kf_len);
 
     fprintf(f, "\n");
 }

@@ -133,6 +133,9 @@ int main(int argc, char* argv[]) {
 "extern int traza_get_pinza(int idx);\n"
 "extern int traza_get_vel(int idx);\n\n");
 
+    /* Inyectar arrays de traza (x,y,z,pinza,vel) y keyframes directamente en el _vis.c */
+    generar_traza_c(fvis);
+
     fputs(
 "#define WIN_W    900\n"
 "#define WIN_H    600\n"
@@ -244,7 +247,8 @@ int main(int argc, char* argv[]) {
 /* draw_hud */
 "static void draw_hud(SDL_Renderer *r, TTF_Font *font, TTF_Font *font_bold,\n"
 "                     int wx, int wy, int wz, int pinza, int vel,\n"
-"                     int idx, int total) {\n"
+"                     int idx, int total,\n"
+"                     int kf_cur, int kf_total, int kf_tipo_act) {\n"
 "    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);\n"
 "    SDL_SetRenderDrawColor(r, 10, 10, 20, 210);\n"
 "    SDL_Rect panel = {0, 0, PANEL_W, WIN_H};\n"
@@ -313,21 +317,49 @@ int main(int argc, char* argv[]) {
 "    SDL_SetRenderDrawColor(r, 50, 70, 110, 255);\n"
 "    SDL_RenderDrawLine(r, 8, 342, PANEL_W-8, 342);\n\n"
 
+/* ── PROGRESO con botones PREV/NEXT y marcadores de keyframe ── */
 "    draw_text(r, font_bold, \"PROGRESO\", 12, 350, 180, 180, 200, 255);\n"
 "    snprintf(buf, sizeof(buf), \"Paso %d / %d\", idx+1, total);\n"
-"    draw_text(r, font, buf, 12, 370, 160, 160, 190, 255);\n"
+"    draw_text(r, font, buf, 12, 368, 160, 160, 190, 255);\n"
+
+/* Barra de progreso con marcadores de keyframe */
 "    SDL_SetRenderDrawColor(r, 40, 40, 60, 255);\n"
-"    SDL_Rect prg_bg = {12, 392, PANEL_W-24, 10};\n"
+"    SDL_Rect prg_bg = {12, 384, PANEL_W-24, 8};\n"
 "    SDL_RenderFillRect(r, &prg_bg);\n"
 "    SDL_SetRenderDrawColor(r, 70, 130, 220, 255);\n"
 "    int pw = (total > 1) ? (PANEL_W-24)*(idx)/(total-1) : PANEL_W-24;\n"
-"    SDL_Rect prg_fg = {12, 392, pw, 10};\n"
+"    SDL_Rect prg_fg = {12, 384, pw, 8};\n"
 "    SDL_RenderFillRect(r, &prg_fg);\n"
+/* Marcadores de keyframe sobre la barra */
+"    for (int k = 0; k < TRAZA_KF_LEN; k++) {\n"
+"        int kx = 12 + (total > 1 ? (PANEL_W-24)*traza_kf[k]/(total-1) : 0);\n"
+"        SDL_SetRenderDrawColor(r, 255, 220, 60, 255);\n"
+"        SDL_RenderDrawLine(r, kx, 381, kx, 394);\n"
+"    }\n"
+
+/* Botones PREV / NEXT */
+"    {\n"
+"        int bw = (PANEL_W-24)/2 - 2;\n"
+"        SDL_SetRenderDrawColor(r, 50, 80, 140, 255);\n"
+"        SDL_Rect btn_p = {12,      398, bw, 18}; SDL_RenderFillRect(r, &btn_p);\n"
+"        SDL_Rect btn_n = {12+bw+4, 398, bw, 18}; SDL_RenderFillRect(r, &btn_n);\n"
+"        draw_text(r, font, \"< PREV\", 16,      400, 180, 210, 255, 255);\n"
+"        draw_text(r, font, \"NEXT >\", 16+bw+4, 400, 180, 210, 255, 255);\n"
+"    }\n"
+
+/* Etiqueta keyframe actual */
+"    {\n"
+"        const char *kf_nombres[] = {\"\",\"HOME\",\"MOVE\",\"MOVEJ\",\"APPROACH\",\"DEPART\",\"OPEN\",\"CLOSE\",\"SPEED\",\"WAIT\"};\n"
+"        snprintf(buf, sizeof(buf), \"KF %d/%d: %s\",\n"
+"            kf_cur+1, kf_total,\n"
+"            (kf_tipo_act >= 0 && kf_tipo_act <= 9) ? kf_nombres[kf_tipo_act] : \"-\");\n"
+"        draw_text(r, font, buf, 12, 420, 255, 220, 60, 255);\n"
+"    }\n"
 "    SDL_SetRenderDrawColor(r, 50, 70, 110, 255);\n"
-"    SDL_RenderDrawLine(r, 8, 416, PANEL_W-8, 416);\n\n"
+"    SDL_RenderDrawLine(r, 8, 438, PANEL_W-8, 438);\n\n"
 
 /* Selector de vista */
-"    draw_text(r, font_bold, \"VISTA\", 12, 424, 180, 180, 200, 255);\n"
+"    draw_text(r, font_bold, \"VISTA\", 12, 446, 180, 180, 200, 255);\n"
 "    {\n"
 "        const char *etiq[3] = {\"ISO\",\"TOP\",\"LADO\"};\n"
 "        const char *nombres[3] = {\"Isometrica\",\"Superior\",\"Lateral\"};\n"
@@ -335,19 +367,20 @@ int main(int argc, char* argv[]) {
 "            int bx = 12 + v*56;\n"
 "            if (v == modo_vista) {\n"
 "                SDL_SetRenderDrawColor(r, 70, 130, 220, 255);\n"
-"                SDL_Rect btn = {bx, 444, 50, 18}; SDL_RenderFillRect(r, &btn);\n"
-"                draw_text(r, font, etiq[v], bx+6, 446, 255, 255, 255, 255);\n"
+"                SDL_Rect btn = {bx, 464, 50, 18}; SDL_RenderFillRect(r, &btn);\n"
+"                draw_text(r, font, etiq[v], bx+6, 466, 255, 255, 255, 255);\n"
 "            } else {\n"
 "                SDL_SetRenderDrawColor(r, 40, 40, 60, 255);\n"
-"                SDL_Rect btn = {bx, 444, 50, 18}; SDL_RenderFillRect(r, &btn);\n"
-"                draw_text(r, font, etiq[v], bx+6, 446, 100, 100, 130, 255);\n"
+"                SDL_Rect btn = {bx, 464, 50, 18}; SDL_RenderFillRect(r, &btn);\n"
+"                draw_text(r, font, etiq[v], bx+6, 466, 100, 100, 130, 255);\n"
 "            }\n"
 "        }\n"
-"        draw_text(r, font, nombres[modo_vista], 12, 468, 140, 200, 255, 255);\n"
+"        draw_text(r, font, nombres[modo_vista], 12, 488, 140, 200, 255, 255);\n"
 "    }\n\n"
 
-"    draw_text(r, font, \"TAB: ocultar panel\", 12, WIN_H-48, 80, 80, 100, 255);\n"
-"    draw_text(r, font, \"V: cambiar vista\",   12, WIN_H-28, 80, 80, 100, 255);\n"
+"    draw_text(r, font, \"TAB: ocultar panel\",  12, WIN_H-68, 80, 80, 100, 255);\n"
+"    draw_text(r, font, \"V: vista  SPACE: pausa\", 12, WIN_H-48, 80, 80, 100, 255);\n"
+"    draw_text(r, font, \"<- -> : keyframes\",    12, WIN_H-28, 80, 80, 100, 255);\n"
 "}\n\n"
 
 /* main del _vis.c */
@@ -381,6 +414,7 @@ int main(int argc, char* argv[]) {
 "    int running     = 1;\n"
 "    int hud_visible = 1;\n"
 "    int paused      = 0;\n"
+"    int kf_cur      = 0;\n"
 "    SDL_Event ev;\n\n"
 
 "    while (running) {\n"
@@ -394,7 +428,18 @@ int main(int argc, char* argv[]) {
 "                    case SDLK_v:\n"
 "                        modo_vista = (modo_vista + 1) % 3;\n"
 "                        idx    = 0;\n"
+"                        kf_cur = 0;\n"
 "                        paused = 0;\n"
+"                        break;\n"
+"                    case SDLK_LEFT:\n"
+"                        if (kf_cur > 0) kf_cur--;\n"
+"                        idx = traza_kf[kf_cur];\n"
+"                        paused = 1;\n"
+"                        break;\n"
+"                    case SDLK_RIGHT:\n"
+"                        if (kf_cur < TRAZA_KF_LEN - 1) kf_cur++;\n"
+"                        idx = traza_kf[kf_cur];\n"
+"                        paused = 1;\n"
 "                        break;\n"
 "                    default: break;\n"
 "                }\n"
@@ -521,7 +566,10 @@ int main(int argc, char* argv[]) {
 
 /* HUD */
 "        if (hud_visible) {\n"
-"            draw_hud(ren, font, font_bold, wx, wy, wz, pinza, vel, idx, total);\n"
+"            int kf_tipo_act = (kf_cur >= 0 && kf_cur < TRAZA_KF_LEN)\n"
+"                              ? traza_kf_tipo[kf_cur] : 0;\n"
+"            draw_hud(ren, font, font_bold, wx, wy, wz, pinza, vel,\n"
+"                     idx, total, kf_cur, TRAZA_KF_LEN, kf_tipo_act);\n"
 "        } else {\n"
 "            draw_text(ren, font, \"TAB: mostrar panel\",\n"
 "                      8, WIN_H-48, 80, 80, 100, 255);\n"
@@ -536,6 +584,9 @@ int main(int argc, char* argv[]) {
 "            if (delay < 35) delay = 35;\n"
 "            SDL_Delay(delay);\n"
 "            idx++;\n"
+"            /* avanzar kf_cur al keyframe que corresponde al idx actual */\n"
+"            while (kf_cur < TRAZA_KF_LEN - 1 && traza_kf[kf_cur+1] <= idx)\n"
+"                kf_cur++;\n"
 "        } else {\n"
 "            SDL_Delay(16);\n"
 "        }\n"

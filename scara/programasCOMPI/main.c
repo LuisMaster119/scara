@@ -123,17 +123,15 @@ int main(int argc, char* argv[]) {
 "#include <stdio.h>\n"
 "#include <math.h>\n\n");
 
-    /* Incrustar arrays de traza directamente — sin ASM, sin NASM */
-    generar_traza_c(fvis);
-
-    /* Macros de acceso que reemplazan a las antiguas extern traza_get_* */
+    /* Declarar funciones externas del .asm compilado */
     fprintf(fvis,
-"#define traza_get_len()    TRAZA_LEN\n"
-"#define traza_get_x(i)     traza_x[i]\n"
-"#define traza_get_y(i)     traza_y[i]\n"
-"#define traza_get_z(i)     traza_z[i]\n"
-"#define traza_get_pinza(i) traza_pinza[i]\n"
-"#define traza_get_vel(i)   traza_vel[i]\n\n");
+"/* Funciones importadas del codigo ensamblador (compilado con NASM) */\n"
+"extern int traza_get_len(void);\n"
+"extern int traza_get_x(int idx);\n"
+"extern int traza_get_y(int idx);\n"
+"extern int traza_get_z(int idx);\n"
+"extern int traza_get_pinza(int idx);\n"
+"extern int traza_get_vel(int idx);\n\n");
 
     fprintf(fvis,
 "#define WIN_W     900\n"
@@ -467,23 +465,35 @@ int main(int argc, char* argv[]) {
     fclose(fvis);
     printf("[GEN] Visualizador SDL2+TTF: %s\n", ruta_vis);
 
-    // ── 7. Compilar _vis.c con gcc (sin NASM, sin .obj intermedio) ──
+    // ── 7. Compilar .asm a .obj con NASM ──
+    char ruta_obj[512];
+    snprintf(ruta_obj, sizeof(ruta_obj), "%.*s.obj", (int)(strlen(ruta_asm)-4), ruta_asm);
+    
+    char cmd_nasm[1024];
+    snprintf(cmd_nasm, sizeof(cmd_nasm), "nasm -f win64 \"%s\" -o \"%s\"", ruta_asm, ruta_obj);
+    printf("\n=== COMPILANDO CON NASM: %s ===\n", cmd_nasm);
+    if (system(cmd_nasm) != 0) {
+        fprintf(stderr, "Error: NASM fallo\n");
+        free(programa); return 1;
+    }
+
+    // ── 8. Enlazar _vis.c + .obj con gcc ──
     char cmd_ld[1024];
     snprintf(cmd_ld, sizeof(cmd_ld),
-             "gcc -O2 \"%s\" -o \"%s\" "
+             "gcc -O2 \"%s\" \"%s\" -o \"%s\" "
              "-I\"C:/msys64/mingw64/include\" "
              "-I\"C:/msys64/mingw64/include/SDL2\" "
              "-L\"C:/msys64/mingw64/lib\" "
              "-lSDL2 -lSDL2main -lSDL2_ttf -lmingw32 -lm "
              "-mwindows",
-             ruta_vis, ruta_exe);
-    printf("\n=== COMPILANDO VISUALIZADOR: %s ===\n", cmd_ld);
+             ruta_vis, ruta_obj, ruta_exe);
+    printf("\n=== ENLAZANDO: %s ===\n", cmd_ld);
     if (system(cmd_ld) != 0) {
         fprintf(stderr, "Error: enlazado fallo\n");
         free(programa); return 1;
     }
 
-    // ── 8. Ejecutar el binario generado ──
+    // ── 9. Ejecutar el binario generado ──
     printf("\n=== EJECUTANDO: %s ===\n", ruta_exe);
     char cmd_run[512];
     snprintf(cmd_run, sizeof(cmd_run), "\"%s\"", ruta_exe);

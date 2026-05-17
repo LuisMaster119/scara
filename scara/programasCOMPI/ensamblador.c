@@ -344,12 +344,20 @@ static void emit_asm_sdl2(FILE* f) {
 
     fprintf(f,
         "; ============================================================\n"
-        "; Generado por compilador SCARA — datos de traza NASM\n"
-        "; Los datos se exportan como simbolos C para el visualizador SDL2.\n"
+        "; Generado por compilador SCARA — datos de traza en NASM x64\n"
+        "; Código ensamblador con funciones para acceso a datos.\n"
         "; ============================================================\n\n"
         "default rel\n\n"
         "section .data\n\n"
-        "    traza_len  dd  %d\n", traza_len);
+        "    global traza_len\n"
+        "    traza_len  dd  %d\n\n", traza_len);
+
+    /* Exports para los arrays */
+    fprintf(f, "    global traza_x\n");
+    fprintf(f, "    global traza_y\n");
+    fprintf(f, "    global traza_z\n");
+    fprintf(f, "    global traza_pinza\n");
+    fprintf(f, "    global traza_vel\n\n");
 
     for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].x;
     emit_array_dd(f, "traza_x", tmp, traza_len);
@@ -366,7 +374,93 @@ static void emit_asm_sdl2(FILE* f) {
     for (int i = 0; i < traza_len; i++) tmp[i] = traza[i].velocidad;
     emit_array_dd(f, "traza_vel", tmp, traza_len);
 
-    fprintf(f, "\n; (El visualizador SDL2 usa los datos del _vis.c generado)\n");
+    /* Funciones para acceder a los datos (x64 Windows calling convention) */
+    fprintf(f, "\nsection .text\n\n");
+    
+    fprintf(f, "    global traza_get_len\n");
+    fprintf(f, "    global traza_get_x\n");
+    fprintf(f, "    global traza_get_y\n");
+    fprintf(f, "    global traza_get_z\n");
+    fprintf(f, "    global traza_get_pinza\n");
+    fprintf(f, "    global traza_get_vel\n\n");
+    
+    fprintf(f, 
+        "; int traza_get_len(void)\n"
+        "traza_get_len:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    ret\n\n"
+        
+        "; int traza_get_x(int idx)  [idx en rcx]\n"
+        "traza_get_x:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    cmp ecx, eax\n"
+        "    jge .ret_zero_x\n"
+        "    lea rax, [rel traza_x]\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, [rax + rcx*4]\n"
+        "    ret\n"
+        ".ret_zero_x:\n"
+        "    xor eax, eax\n"
+        "    ret\n\n"
+        
+        "; int traza_get_y(int idx)  [idx en rcx]\n"
+        "traza_get_y:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    cmp ecx, eax\n"
+        "    jge .ret_zero_y\n"
+        "    lea rax, [rel traza_y]\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, [rax + rcx*4]\n"
+        "    ret\n"
+        ".ret_zero_y:\n"
+        "    xor eax, eax\n"
+        "    ret\n\n"
+        
+        "; int traza_get_z(int idx)  [idx en rcx]\n"
+        "traza_get_z:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    cmp ecx, eax\n"
+        "    jge .ret_zero_z\n"
+        "    lea rax, [rel traza_z]\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, [rax + rcx*4]\n"
+        "    ret\n"
+        ".ret_zero_z:\n"
+        "    xor eax, eax\n"
+        "    ret\n\n"
+        
+        "; int traza_get_pinza(int idx)  [idx en rcx]\n"
+        "traza_get_pinza:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    cmp ecx, eax\n"
+        "    jge .ret_zero_p\n"
+        "    lea rax, [rel traza_pinza]\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, [rax + rcx*4]\n"
+        "    ret\n"
+        ".ret_zero_p:\n"
+        "    xor eax, eax\n"
+        "    ret\n\n"
+        
+        "; int traza_get_vel(int idx)  [idx en rcx]\n"
+        "traza_get_vel:\n"
+        "    lea rax, [rel traza_len]\n"
+        "    mov eax, [rax]\n"
+        "    cmp ecx, eax\n"
+        "    jge .ret_zero_v\n"
+        "    lea rax, [rel traza_vel]\n"
+        "    movsxd rcx, ecx\n"
+        "    mov eax, [rax + rcx*4]\n"
+        "    ret\n"
+        ".ret_zero_v:\n"
+        "    xor eax, eax\n"
+        "    ret\n\n"
+    );
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const char* ruta_programa = argv[1];
+    int modo_servidor = (argc >= 3 && strcmp(argv[2], "--no-run") == 0);
 
     // ── 1. Leer fuente ──
     char* programa = leer_archivo(ruta_programa);
@@ -632,11 +633,13 @@ int main(int argc, char* argv[]) {
         free(programa); return 1;
     }
 
-    // ── 9. Ejecutar el binario generado ──
-    printf("\n=== EJECUTANDO: %s ===\n", ruta_exe);
-    char cmd_run[512];
-    snprintf(cmd_run, sizeof(cmd_run), "\"%s\"", ruta_exe);
-    system(cmd_run);
+    // ── 9. Ejecutar el binario generado (solo si no viene del servidor) ──
+    if (!modo_servidor) {
+        printf("\n=== EJECUTANDO: %s ===\n", ruta_exe);
+        char cmd_run[512];
+        snprintf(cmd_run, sizeof(cmd_run), "\"%s\"", ruta_exe);
+        system(cmd_run);
+    }
 
     free(programa);
     return 0;

@@ -1,9 +1,10 @@
 PROGRAM opt1_speed
 # Optimizacion: SPEED consecutivo con el mismo valor se elimina
 # Se esperan 3 instrucciones eliminadas del bytecode inicial
-POINT inicio    = 0   0   0
+# Coordenadas validas: sqrt(x^2+y^2) en [50, 350]
+POINT inicio    = 100 100 0
 POINT almacen   = 200 150 0
-POINT entrega   = 400 100 0
+POINT entrega   = 280 150 0
 SPEED 70
 SPEED 70
 OPEN

@@ -230,7 +230,19 @@ static int construir_traza(const Instruccion* prog, int len) {
                 break;
             }
 
-            case OP_SPEED:  kf_push(KF_SPEED);  vel = ins->arg1; traza_push(); break;
+            case OP_SPEED: {
+                kf_push(KF_SPEED);
+                int sv;
+                if (ins->flags & INS_F_ARG1_VAR) {
+                    int idx = var_buscar(ins->sval);
+                    sv = (idx >= 0) ? vars[idx].valor : 0;
+                } else {
+                    sv = ins->arg1;
+                }
+                vel = sv;
+                traza_push();
+                break;
+            }
             case OP_HOME:   kf_push(KF_HOME);   pos_x = pos_y = pos_z = 0; traza_push(); break;
             case OP_OPEN:   kf_push(KF_OPEN);   pinza = 1; traza_push(); break;
             case OP_CLOSE:  kf_push(KF_CLOSE);  pinza = 0; traza_push(); break;
@@ -262,10 +274,18 @@ static int construir_traza(const Instruccion* prog, int len) {
                 kf_push(KF_DEPART);
                 pos_z += ins->arg1; traza_push(); break;
 
-            case OP_WAIT:
+            case OP_WAIT: {
                 kf_push(KF_WAIT);
-                for (int w = 0; w < ins->arg1 * 3; w++) traza_push();
+                int wt;
+                if (ins->flags & INS_F_ARG1_VAR) {
+                    int idx = var_buscar(ins->sval);
+                    wt = (idx >= 0) ? vars[idx].valor : 0;
+                } else {
+                    wt = ins->arg1;
+                }
+                for (int w = 0; w < wt * 3; w++) traza_push();
                 break;
+            }
 
             case OP_PRINT: break;
 

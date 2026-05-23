@@ -2,8 +2,9 @@ PROGRAM opt2_gripper
 # Optimizacion: OPEN/CLOSE duplicados consecutivos se eliminan
 # El gripper no puede estar mas abierto/cerrado de lo que ya esta
 # Se esperan 4 instrucciones eliminadas del bytecode inicial
-POINT bandeja = 120 200 0
-POINT cinta   = 350  80 0
+# Coordenadas validas: sqrt(x^2+y^2) en [50, 350]
+POINT bandeja = 120 150 0
+POINT cinta   = 250 150 0
 OPEN
 OPEN
 MOVE bandeja

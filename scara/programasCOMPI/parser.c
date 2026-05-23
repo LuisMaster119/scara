@@ -448,7 +448,25 @@ void parsear_instruccion(Parser* p) {
 
         case TOK_SPEED:
             parser_avanzar(p);
-            {
+            if (p->actual.tipo == TOK_IDENT) {
+                /* Argumento es una variable: validar y emitir con flag */
+                Simbolo* sv = tabla_buscar(p->actual.valor);
+                if (sv == NULL) {
+                    char mensaje[128];
+                    sprintf(mensaje, "'%s' no fue declarado", p->actual.valor);
+                    error_reportar(ERR_SEMANTICO, p->actual.linea,
+                                   p->actual.valor, mensaje);
+                } else if (sv->tipo != SIM_VAR) {
+                    char mensaje[128];
+                    sprintf(mensaje,
+                        "'%s' es POINT, se esperaba VAR numerica", p->actual.valor);
+                    error_reportar(ERR_SEMANTICO, p->actual.linea,
+                                   p->actual.valor, mensaje);
+                }
+                emitir(OP_SPEED, 0, 0, 0, p->actual.valor);
+                bytecode[bytecode_len - 1].flags |= INS_F_ARG1_VAR;
+                parser_avanzar(p);
+            } else {
                 int vel = atoi(p->actual.valor);
                 if (vel < 0 || vel > 100) {
                     char mensaje[128];
@@ -464,7 +482,25 @@ void parsear_instruccion(Parser* p) {
 
         case TOK_WAIT:
             parser_avanzar(p);
-            {
+            if (p->actual.tipo == TOK_IDENT) {
+                /* Argumento es una variable: validar y emitir con flag */
+                Simbolo* sw = tabla_buscar(p->actual.valor);
+                if (sw == NULL) {
+                    char mensaje[128];
+                    sprintf(mensaje, "'%s' no fue declarado", p->actual.valor);
+                    error_reportar(ERR_SEMANTICO, p->actual.linea,
+                                   p->actual.valor, mensaje);
+                } else if (sw->tipo != SIM_VAR) {
+                    char mensaje[128];
+                    sprintf(mensaje,
+                        "'%s' es POINT, se esperaba VAR numerica", p->actual.valor);
+                    error_reportar(ERR_SEMANTICO, p->actual.linea,
+                                   p->actual.valor, mensaje);
+                }
+                emitir(OP_WAIT, 0, 0, 0, p->actual.valor);
+                bytecode[bytecode_len - 1].flags |= INS_F_ARG1_VAR;
+                parser_avanzar(p);
+            } else {
                 int tiempo = atoi(p->actual.valor);
                 if (tiempo <= 0) {
                     char mensaje[128];

@@ -22,8 +22,18 @@ int optimizar_bytecode(const Instruccion* entrada, int len_entrada,
         // Eliminacion de SPEED redundante
         if (copia.opcode == OP_SPEED && salida_len > 0) {
             const Instruccion* prev = &salida[salida_len - 1];
-            if (prev->opcode == OP_SPEED && prev->arg1 == copia.arg1) {
-                continue;
+            if (prev->opcode == OP_SPEED) {
+                int prev_var  = (prev->flags  & INS_F_ARG1_VAR) != 0;
+                int copia_var = (copia.flags  & INS_F_ARG1_VAR) != 0;
+                int mismo = 0;
+                if (!prev_var && !copia_var) {
+                    /* Ambos literales: comparar valor */
+                    mismo = (prev->arg1 == copia.arg1);
+                } else if (prev_var && copia_var) {
+                    /* Ambas variables: comparar nombre */
+                    mismo = (strcmp(prev->sval, copia.sval) == 0);
+                }
+                if (mismo) continue;
             }
         }
 

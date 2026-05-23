@@ -1,17 +1,20 @@
 PROGRAM opt3_constantes
 # Optimizacion: plegado de constantes (constant folding)
 # Las expresiones con literales se pre-calculan en tiempo de compilacion
-# El bytecode optimizado tendra los valores ya calculados en arg1
+# El bytecode optimizado tendra los valores ya calculados en arg1:
+#   distancia = 150 + 50  =>  arg1 = 200  (en lugar de evaluar en runtime)
+#   demora    = 5   - 2   =>  arg1 = 3
+#   offset    = 100 + 25  =>  arg1 = 125
 VAR distancia = 0
 VAR demora    = 0
 VAR offset    = 0
-POINT origen  = 0   0   0
-POINT destino = 300 200 0
+POINT origen  = 100 100 0
+POINT destino = 200 200 0
 distancia = 150 + 50
 demora    = 5   - 2
 offset    = 100 + 25
 MOVE destino
-WAIT demora
+WAIT 2
 PRINT "Plegado de constantes aplicado"
 HOME
 END

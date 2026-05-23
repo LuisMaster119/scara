@@ -1,19 +1,30 @@
-PROGRAM opt1_speed
-# Optimizacion: SPEED consecutivo con el mismo valor se elimina
-# Se esperan 3 instrucciones eliminadas del bytecode inicial
-POINT inicio    = 0   0   0
-POINT almacen   = 200 150 0
-POINT entrega   = 400 100 0
-SPEED 70
-SPEED 70
+PROGRAM opt5_combinado
+# Combina todos los pases del optimizador SCARA:
+#   - SPEED duplicado    (2 eliminadas)
+#   - OPEN/CLOSE duplic. (3 eliminadas)
+#   - Plegado constantes (valores pre-calculados)
+#   - Auto-asignacion    (1 eliminada)
+# Total esperado: 6 instrucciones eliminadas
+# Coordenadas validas: sqrt(x^2+y^2) en [50, 350]
+VAR ciclos = 0
+VAR pausa  = 0
+POINT recogida = 120 150 0
+POINT deposito = 250 150 0
+SPEED 60
+SPEED 60
 OPEN
-MOVE almacen
+OPEN
+ciclos = 2 + 1
+pausa  = 4 - 2
+ciclos = ciclos
+MOVE recogida
 CLOSE
-WAIT 1
-SPEED 90
-SPEED 90
-SPEED 90
-MOVE entrega
+CLOSE
+WAIT pausa
+SPEED 80
+SPEED 80
+MOVE deposito
+OPEN
 OPEN
 HOME
 END

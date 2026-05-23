@@ -2,13 +2,13 @@ PROGRAM opt5_combinado
 # Combina todos los pases del optimizador SCARA:
 #   - SPEED duplicado    (2 eliminadas)
 #   - OPEN/CLOSE duplic. (3 eliminadas)
-#   - Plegado constantes (valores pre-calculados)
-#   - Auto-asignacion    (1 eliminada)
+#   - Plegado constantes (ciclos = 2+1 => 3, pausa = 4-2 => 2 en bytecode)
+#   - Auto-asignacion    (1 eliminada: ciclos = ciclos)
 # Total esperado: 6 instrucciones eliminadas
 VAR ciclos = 0
 VAR pausa  = 0
-POINT recogida = 100 200 0
-POINT deposito = 350 150 0
+POINT recogida = 120 150 0
+POINT deposito = 250 150 0
 SPEED 60
 SPEED 60
 OPEN
@@ -19,7 +19,7 @@ ciclos = ciclos
 MOVE recogida
 CLOSE
 CLOSE
-WAIT pausa
+WAIT 2
 SPEED 80
 SPEED 80
 MOVE deposito

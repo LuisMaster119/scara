@@ -1,9 +1,10 @@
 PROGRAM opt4_self_assign
 # Optimizacion: asignacion de variable a si misma se elimina (x = x)
+# Ademas demuestra SPEED con variable (nuevo en el compilador)
 # Se esperan 2 instrucciones eliminadas del bytecode inicial
 VAR contador   = 10
 VAR velocidad  = 50
-POINT meta     = 250 180 0
+POINT meta     = 200 150 0
 contador  = contador
 velocidad = velocidad
 SPEED velocidad

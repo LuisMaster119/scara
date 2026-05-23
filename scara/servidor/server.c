@@ -221,6 +221,7 @@ static void servir_ejemplo(SOCKET s, const char *relpath) {
 
     FILE *f = fopen(ruta, "rb");
     if (!f) {
+        printf("[404] Ejemplo no encontrado: %s\n", ruta);
         const char *err =
             "HTTP/1.1 404 Not Found\r\n"
             "Content-Type: text/plain\r\n"
@@ -588,7 +589,8 @@ int main(void) {
     printf("Escuchando en http://localhost:%d\n", PUERTO);
     printf("Backend  : %s\n", RUTA_SCARA);
     printf("Temp     : %s\n", RUTA_TEMP);
-    printf("Frontend : %s\n\n", RUTA_INDEX);
+    printf("Frontend : %s\n", RUTA_INDEX);
+    printf("Ejemplos : %s\n\n", RUTA_EJEMPLOS);
     printf("Abre http://localhost:%d en tu navegador.\n", PUERTO);
     printf("Ctrl+C para detener.\n\n");
 

@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SCARA IDE</title>
+  <!-- CodeMirror 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -26,6 +29,7 @@
       --text-muted:  #455A64;
       --success:     #66BB6A;
       --warning:     #FFA726;
+      --opt:         #40C4FF;
     }
 
     html, body { height: 100%; background: var(--bg); color: var(--text);
@@ -52,7 +56,7 @@
     .navbar {
       grid-area: navbar; background: var(--panel);
       border-bottom: 2px solid var(--border);
-      display: flex; align-items: center; padding: 0 16px; gap: 10px; user-select: none;
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; user-select: none;
     }
     .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px;
       letter-spacing: 2.5px; color: var(--kw); text-transform: uppercase; }
@@ -87,6 +91,41 @@
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .spinning { display: inline-block; animation: spin 0.7s linear infinite; }
 
+    /* ── Botón de guardado con dropdown ── */
+    .save-group { position: relative; display: flex; }
+    .save-group .btn-save-main {
+      border-radius: 6px 0 0 6px;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      padding-right: 10px;
+    }
+    .save-group .btn-save-arrow {
+      border-radius: 0 6px 6px 0;
+      padding: 7px 7px;
+      border-left: none;
+    }
+    .save-group .btn-save-arrow svg { width: 10px; height: 10px; }
+
+    .save-dropdown-menu {
+      position: absolute; top: calc(100% + 5px); right: 0; min-width: 200px;
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5); z-index: 60; overflow: hidden;
+      display: none;
+    }
+    .save-dropdown-menu.open { display: block; }
+    .save-dropdown-item {
+      padding: 9px 14px; font-size: 12px; cursor: pointer;
+      color: var(--text-dim); display: flex; align-items: center; gap: 8px;
+      transition: background 0.12s; font-family: 'Segoe UI', sans-serif;
+    }
+    .save-dropdown-item:hover { background: rgba(30,136,229,0.1); color: var(--text); }
+    .save-dropdown-item svg { flex-shrink: 0; }
+    .save-dropdown-item kbd {
+      margin-left: auto; font-size: 10px; background: #0F0F19;
+      padding: 2px 5px; border-radius: 3px; border: 1px solid var(--border);
+      color: var(--text-muted); font-family: 'Consolas', monospace;
+    }
+    .save-dropdown-divider { height: 1px; background: var(--border); }
+
     /* ══ SIDEBAR ══ */
     .sidebar { grid-area: sidebar; background: var(--panel); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden; }
@@ -108,6 +147,7 @@
       color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .dot-ok  { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .dot-opt { background: var(--opt);     box-shadow: 0 0 4px var(--opt);     }
     .dot-lex { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
     .dot-syn { background: var(--point);   box-shadow: 0 0 4px var(--point);   }
     .dot-sem { background: var(--err);     box-shadow: 0 0 4px var(--err);     }
@@ -157,15 +197,43 @@
     .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); display: none; }
     .editor-tab.modified .tab-dot { display: block; }
 
-    .editor-body { flex: 1; display: flex; overflow: hidden; }
-    .line-numbers { padding: 14px 0; min-width: 46px; background: var(--panel); border-right: 1px solid var(--border);
-      text-align: right; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px;
-      color: var(--text-muted); user-select: none; overflow: hidden; flex-shrink: 0; }
-    .line-numbers span { display: block; padding-right: 10px; }
-    .editor-code { flex: 1; padding: 14px 16px; font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13px; line-height: 20px; background: transparent; color: var(--text);
-      border: none; outline: none; resize: none; overflow: auto; tab-size: 4; caret-color: var(--kw); }
-    .editor-code::selection { background: #1A3050; }
+    .editor-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── CodeMirror dark overrides ── */
+    .CodeMirror {
+      flex: 1; height: 100% !important;
+      background: var(--bg) !important; color: var(--text) !important;
+      font-family: 'Consolas', 'Courier New', monospace !important;
+      font-size: 13px !important; line-height: 20px !important;
+    }
+    .CodeMirror-scroll { padding: 6px 0; }
+    .CodeMirror-gutters { background: var(--panel) !important; border-right: 1px solid var(--border) !important; }
+    .CodeMirror-linenumber { color: var(--text-muted) !important; padding: 0 10px 0 6px; }
+    .CodeMirror-cursor { border-left: 2px solid var(--kw) !important; }
+    .CodeMirror-selected { background: #1A3050 !important; }
+    .CodeMirror-focused .CodeMirror-selected { background: #1A3050 !important; }
+    .CodeMirror-activeline-background { background: rgba(30,136,229,0.06) !important; }
+    .CodeMirror-matchingbracket { color: var(--str) !important; font-weight: bold; outline: 1px solid var(--str); }
+
+    /* ── SCARA token colors ── */
+    .cm-keyword         { color: var(--kw)      !important; font-weight: bold; }
+    .cm-comment         { color: var(--cmt)     !important; font-style: italic; }
+    .cm-string          { color: var(--str)     !important; }
+    .cm-number          { color: var(--num)     !important; }
+    .cm-operator        { color: var(--text-dim)!important; }
+    .cm-scara-point-def { color: var(--point)   !important; font-weight: bold; }
+    .cm-scara-var-def   { color: var(--var)     !important; font-weight: bold; }
+    .cm-scara-point     { color: var(--point)   !important; }
+    .cm-scara-var       { color: var(--var)     !important; }
+
+    /* ── show-hint dropdown ── */
+    .CodeMirror-hints {
+      background: var(--panel2) !important; border: 1px solid var(--border) !important;
+      border-radius: 6px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+      font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; padding: 3px 0; z-index: 50;
+    }
+    .CodeMirror-hint { color: var(--text) !important; padding: 4px 14px !important; }
+    .CodeMirror-hint-active { background: var(--accent2) !important; color: white !important; }
 
     /* ══ OUTPUT PANEL ══ */
     .output-panel { grid-area: output; background: var(--panel); border-left: 1px solid var(--border);
@@ -208,6 +276,16 @@
     /* Error blocks */
     .error-block { background: #150808; border: 1px solid #3A1515; border-radius: 6px;
       padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+    /* Error clicable para saltar a la línea */
+    .error-block.jumpable { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+    .error-block.jumpable:hover { background: #1E0A0A; border-color: #5A2020; }
+    .error-block.jumpable:hover .error-jump-hint { color: var(--kw); }
+    .error-jump-hint {
+      font-size: 10px; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
+      display: flex; align-items: center; gap: 4px; transition: color 0.15s;
+    }
+    .error-jump-hint svg { width: 10px; height: 10px; flex-shrink: 0; }
+
     .error-type-badge { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       display: inline-flex; align-items: center; gap: 5px; font-family: 'Segoe UI', sans-serif; }
     .err-lexico   { color: var(--warning); }
@@ -306,10 +384,45 @@
     <div class="navbar-divider"></div>
     <span class="badge badge-idle" id="status-badge">⬤ Listo</span>
     <div class="navbar-sep"></div>
+
+    <!-- Nuevo -->
     <button class="btn btn-ghost" id="btn-new" title="Nuevo archivo">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M9 1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L9 1zm0 1.5L12.5 5H9V2.5z"/></svg>
       Nuevo
     </button>
+
+    <!-- Guardar (split-button con dropdown) -->
+    <div class="save-group" id="save-group">
+      <button class="btn btn-ghost btn-save-main" id="btn-save" title="Guardar (Ctrl+S)">
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5L10.5 1H2zm0 1h8v3.5A1.5 1.5 0 0 0 11.5 7H14v7H2V2zm4 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM4 3h4v2H4V3z"/>
+        </svg>
+        Guardar
+      </button>
+      <button class="btn btn-ghost btn-save-arrow" id="btn-save-arrow" title="Opciones de guardado">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 6 8 10 12 6"/>
+        </svg>
+      </button>
+      <div class="save-dropdown-menu" id="save-dropdown-menu">
+        <div class="save-dropdown-item" id="menu-save-quick">
+          <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
+            <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5L10.5 1H2zm0 1h8v3.5A1.5 1.5 0 0 0 11.5 7H14v7H2V2zm4 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM4 3h4v2H4V3z"/>
+          </svg>
+          Guardar rápido
+          <kbd>Ctrl+S</kbd>
+        </div>
+        <div class="save-dropdown-divider"></div>
+        <div class="save-dropdown-item" id="menu-save-as">
+          <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
+            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zM11 5h2.5L11 2.5V5zM4 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6H9.5A1.5 1.5 0 0 1 8 4.5V1H4z"/>
+          </svg>
+          Guardar como...
+          <kbd>Ctrl+⇧+S</kbd>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary" id="btn-compile" title="Compilar (Ctrl+Enter)">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2v12l8-6-8-6z"/></svg>
       Compilar
@@ -336,6 +449,8 @@
     <!-- Vista: Galería -->
     <div class="sidebar-view active" id="view-gallery">
       <div class="sidebar-scroll">
+
+        <!-- Correctos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-ok"></span>Correctos</div>
           <div class="gallery-item active" data-path="correctos/c1_pickandplace.scara"><span class="file-icon">◆</span>c1_pickandplace</div>
@@ -348,6 +463,29 @@
           <div class="gallery-item" data-path="correctos/c8_ik_bordes.scara"><span class="file-icon">◆</span>c8_ik_bordes</div>
         </div>
         <div class="sidebar-divider"></div>
+
+        <!-- Optimización -->
+        <div class="gallery-group">
+          <div class="gallery-group-label"><span class="dot dot-opt"></span>Optimización</div>
+          <div class="gallery-item" data-path="optimizacion/opt1_speed.scara">
+            <span class="file-icon">⚡</span>opt1_speed_duplicado
+          </div>
+          <div class="gallery-item" data-path="optimizacion/opt2_gripper.scara">
+            <span class="file-icon">⚡</span>opt2_gripper_duplicado
+          </div>
+          <div class="gallery-item" data-path="optimizacion/opt3_constantes.scara">
+            <span class="file-icon">⚡</span>opt3_plegado_constantes
+          </div>
+          <div class="gallery-item" data-path="optimizacion/opt4_self_assign.scara">
+            <span class="file-icon">⚡</span>opt4_auto_asignacion
+          </div>
+          <div class="gallery-item" data-path="optimizacion/opt5_combinado.scara">
+            <span class="file-icon">⚡</span>opt5_combinado
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+
+        <!-- Errores Léxicos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-lex"></span>Errores Léxicos</div>
           <div class="gallery-item" data-path="erroresLexicos/lex1_caracter_desconocido.scara"><span class="file-icon">◇</span>lex1_caracter_desconocido</div>
@@ -355,6 +493,8 @@
           <div class="gallery-item" data-path="erroresLexicos/lex3_porcentaje.scara"><span class="file-icon">◇</span>lex3_porcentaje</div>
         </div>
         <div class="sidebar-divider"></div>
+
+        <!-- Errores Sintácticos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-syn"></span>Errores Sintácticos</div>
           <div class="gallery-item" data-path="erroresSintacticos/sint1_while_sin_end.scara"><span class="file-icon">◇</span>sint1_while_sin_end</div>
@@ -363,6 +503,8 @@
           <div class="gallery-item" data-path="erroresSintacticos/sint4_var_sin_valor.scara"><span class="file-icon">◇</span>sint4_var_sin_valor</div>
         </div>
         <div class="sidebar-divider"></div>
+
+        <!-- Errores Semánticos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-sem"></span>Errores Semánticos</div>
           <div class="gallery-item" data-path="erroresSemanticos/es1_var_no_declarada.scara"><span class="file-icon">◇</span>es1_var_no_declarada</div>
@@ -376,6 +518,7 @@
           <div class="gallery-item" data-path="erroresSemanticos/es9_wait.scara"><span class="file-icon">◇</span>es9_wait</div>
           <div class="gallery-item" data-path="erroresSemanticos/es10_runtime_move_fuera_alcance.scara"><span class="file-icon">◇</span>es10_runtime_move</div>
         </div>
+
       </div>
     </div>
 
@@ -408,9 +551,7 @@
       </div>
     </div>
     <div class="editor-body">
-      <div class="line-numbers" id="line-numbers"></div>
-      <textarea class="editor-code" id="editor" spellcheck="false"
-        placeholder="Escribe código SCARA o selecciona un ejemplo de la galería..."></textarea>
+      <textarea id="editor" style="display:none"></textarea>
     </div>
   </main>
 
@@ -477,16 +618,94 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- CodeMirror 5 (deben ir ANTES del script principal) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+
 <script>
+/* ══════════════════════════════════════════════════════════════
+   MODO SCARA PARA CODEMIRROR 5
+   ══════════════════════════════════════════════════════════════ */
+
+let _scaraPoints = new Set();
+let _scaraVars   = new Set();
+
+function _updateScaraSymbols(text) {
+  _scaraPoints = new Set(
+    [...text.matchAll(/\bPOINT\s+([A-Za-z_]\w*)/g)].map(m => m[1])
+  );
+  _scaraVars = new Set(
+    [...text.matchAll(/\bVAR\s+([A-Za-z_]\w*)/g)].map(m => m[1])
+  );
+}
+
+CodeMirror.defineMode('scara', function() {
+  const KEYWORDS = new Set([
+    'PROGRAM','END','IF','ELSE','WHILE','REPEAT','TIMES',
+    'MOVE','MOVEJ','APPROACH','DEPART','HOME',
+    'OPEN','CLOSE','SPEED','WAIT','PRINT','SET'
+  ]);
+  return {
+    startState: () => ({ afterPoint: false, afterVar: false }),
+    token(stream, state) {
+      if (stream.eatSpace()) return null;
+      if (stream.peek() === '#') { stream.skipToEnd(); return 'comment'; }
+      if (stream.peek() === '"') {
+        stream.next();
+        while (!stream.eol()) { if (stream.next() === '"') break; }
+        return 'string';
+      }
+      if (stream.match(/^-?\d+(\.\d+)?/)) return 'number';
+      if (stream.match(/^(<=|>=|!=|==|[<>+\-*/=])/)) return 'operator';
+      if (stream.match(/^[A-Za-z_]\w*/)) {
+        const word = stream.current();
+        if (state.afterPoint) { state.afterPoint = false; return 'scara-point-def'; }
+        if (state.afterVar)   { state.afterVar   = false; return 'scara-var-def';   }
+        if (word === 'POINT') { state.afterPoint = true;  return 'keyword'; }
+        if (word === 'VAR')   { state.afterVar   = true;  return 'keyword'; }
+        if (KEYWORDS.has(word)) return 'keyword';
+        if (_scaraPoints.has(word)) return 'scara-point';
+        if (_scaraVars.has(word))   return 'scara-var';
+        return null;
+      }
+      stream.next();
+      return null;
+    },
+    blankLine(state) { state.afterPoint = false; state.afterVar = false; }
+  };
+});
+
+/* Autocompletado SCARA */
+function scaraHint(cm) {
+  const cursor = cm.getCursor();
+  const line   = cm.getLine(cursor.line);
+  let start    = cursor.ch;
+  while (start > 0 && /\w/.test(line[start - 1])) start--;
+  const typed = line.slice(start, cursor.ch).toLowerCase();
+  const KWORDS = [
+    'PROGRAM','END','IF','ELSE','WHILE','REPEAT',
+    'MOVE','MOVEJ','APPROACH','DEPART','HOME',
+    'OPEN','CLOSE','SPEED','WAIT','PRINT','VAR','POINT','SET'
+  ];
+  const list = [
+    ...KWORDS, ...[..._scaraPoints], ...[..._scaraVars]
+  ].filter(k => k.toLowerCase().startsWith(typed));
+  return {
+    list,
+    from: CodeMirror.Pos(cursor.line, start),
+    to:   CodeMirror.Pos(cursor.line, cursor.ch),
+  };
+}
+
 /* ══════════════════════════════════════════════════════════════
    UTILIDADES
    ══════════════════════════════════════════════════════════════ */
 function esc(s) {
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 let toastTimer = null;
@@ -501,26 +720,18 @@ function showToast(msg, type = '') {
 /* ══════════════════════════════════════════════════════════════
    PARSING DEL OUTPUT DE scara.exe
    ══════════════════════════════════════════════════════════════ */
-
-/* Extrae el bloque de texto correspondiente a una sección "=== NAME ===" */
 function getSection(text, name) {
   const marker = '=== ' + name + ' ===';
   const start  = text.indexOf(marker);
   if (start === -1) return '';
   const after = text.slice(start + marker.length);
-  /* La siguiente sección empieza con \n=== */
   const end = after.indexOf('\n===');
   return end === -1 ? after : after.slice(0, end);
 }
 
-/*
- * Tabla de símbolos: formato "%-15s %-8s %-6d %-6d %-6d"
- * Cols: NAME(0-14) TYPE(16-23) VAL1(25-30) VAL2(32-37) VAL3(39-44)
- */
 function parseSymbols(text) {
   const section = getSection(text, 'TABLA DE SIMBOLOS');
   if (!section) return [];
-  /* slice(3) = saltar: línea vacía, cabecera de columnas, línea de guiones */
   const lines = section.split('\n').slice(3);
   const syms  = [];
   for (const line of lines) {
@@ -535,15 +746,10 @@ function parseSymbols(text) {
   return syms;
 }
 
-/*
- * Bytecode: formato "%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s"
- * PC(0-3) OPCODE(5-18) ARG1(20-25) ARG2(27-32) ARG3(34-39)
- * FLAGS(41-45) SVAL(47+, split by 2+ spaces para soportar strings con espacios)
- */
 function parseBytecode(text, sectionName) {
   const section = getSection(text, sectionName);
   if (!section) return [];
-  const lines  = section.split('\n').slice(3); /* vacío, cabecera, guiones */
+  const lines  = section.split('\n').slice(3);
   const instrs = [];
   for (const line of lines) {
     if (!line.trim() || line.startsWith('=') || line.startsWith('[GEN]')) break;
@@ -555,7 +761,6 @@ function parseBytecode(text, sectionName) {
     const arg2  = parseInt(line.substring(27, 33)) || 0;
     const arg3  = parseInt(line.substring(34, 40)) || 0;
     const flags = parseInt(line.substring(41, 46)) || 0;
-    /* sval puede ser un string con espacios → spliteamos el resto */
     const rest  = line.length > 47 ? line.substring(47).trimEnd() : '';
     const parts = rest ? rest.split(/\s{2,}/) : [];
     const sval  = (parts[0] || '').trim();
@@ -566,14 +771,6 @@ function parseBytecode(text, sectionName) {
   return instrs;
 }
 
-/*
- * Errores léxicos/sintácticos/semánticos:
- *   >>> ERROR LEXICO
- *       Linea N: mensaje
- *
- *       | linea fuente
- *       | ^^^
- */
 function parseErrors(text) {
   const errors = [];
   const lines  = text.split('\n');
@@ -586,7 +783,7 @@ function parseErrors(text) {
       const lm = lines[i + 1].match(/\s+Linea\s+(\d+):\s*(.*)/);
       if (lm) { lineno = parseInt(lm[1]); msg = lm[2].trim(); i++; }
     }
-    if (i + 1 < lines.length && !lines[i + 1].trim()) i++; /* línea vacía */
+    if (i + 1 < lines.length && !lines[i + 1].trim()) i++;
     if (i + 1 < lines.length) {
       const sm = lines[i + 1].match(/\s+\|\s?(.*)/);
       if (sm) { source = sm[1]; i++; }
@@ -603,16 +800,15 @@ function parseErrors(text) {
 /* ══════════════════════════════════════════════════════════════
    RENDERING
    ══════════════════════════════════════════════════════════════ */
-
 const OP_CLASS = {
-  OP_MOVE: 'op-move', OP_MOVEJ: 'op-move', OP_APPROACH: 'op-move',
-  OP_DEPART: 'op-move', OP_HOME: 'op-move',
-  OP_OPEN: 'op-io', OP_CLOSE: 'op-io',
-  OP_WHILE: 'op-flow', OP_END_WHILE: 'op-flow',
-  OP_IF: 'op-flow',    OP_ELSE: 'op-flow',    OP_END_IF: 'op-flow',
-  OP_REPEAT: 'op-flow', OP_END_REPEAT: 'op-flow',
-  OP_VAR: 'op-assign', OP_POINT: 'op-assign', OP_ASSIGN: 'op-assign',
-  OP_HALT: 'op-halt',
+  OP_MOVE:'op-move', OP_MOVEJ:'op-move', OP_APPROACH:'op-move',
+  OP_DEPART:'op-move', OP_HOME:'op-move',
+  OP_OPEN:'op-io', OP_CLOSE:'op-io',
+  OP_WHILE:'op-flow', OP_END_WHILE:'op-flow',
+  OP_IF:'op-flow', OP_ELSE:'op-flow', OP_END_IF:'op-flow',
+  OP_REPEAT:'op-flow', OP_END_REPEAT:'op-flow',
+  OP_VAR:'op-assign', OP_POINT:'op-assign', OP_ASSIGN:'op-assign',
+  OP_HALT:'op-halt',
 };
 const POINT_OPS = new Set(['OP_MOVE','OP_MOVEJ','OP_APPROACH','OP_POINT']);
 
@@ -680,22 +876,30 @@ function renderSymbolsTable(syms) {
   </table>`;
 }
 
+/* renderErrorBlock — incluye hint de salto si hay número de línea */
 function renderErrorBlock(err) {
-  const typeLabel = { LEXICO: 'Error Léxico', SINTACTICO: 'Error Sintáctico', SEMANTICO: 'Error Semántico' };
-  const typeClass = { LEXICO: 'err-lexico',   SINTACTICO: 'err-sint',          SEMANTICO: 'err-sem' };
+  const typeLabel = { LEXICO:'Error Léxico', SINTACTICO:'Error Sintáctico', SEMANTICO:'Error Semántico' };
+  const typeClass = { LEXICO:'err-lexico',   SINTACTICO:'err-sint',          SEMANTICO:'err-sem' };
   const pointerHtml = err.pointer
     ? `<span class="error-source">${esc(err.source)}\n<span class="error-pointer">${esc(err.pointer)}</span></span>`
     : (err.source ? `<span class="error-source">${esc(err.source)}</span>` : '');
-  return `<div class="error-block">
+  const jumpHint = err.lineno
+    ? `<div class="error-jump-hint">
+         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 1.5A.5.5 0 0 1 4 1h10a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 4 5h8a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5zm0 4A.5.5 0 0 1 4 9h5a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5zM2 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"/></svg>
+         Clic para ir a línea ${err.lineno} en el editor
+       </div>`
+    : '';
+  return `<div class="error-block${err.lineno ? ' jumpable' : ''}" data-lineno="${err.lineno || ''}">
     <div class="error-type-badge ${typeClass[err.type] || ''}">⚠ ${typeLabel[err.type] || err.type}</div>
     ${err.lineno ? `<div class="error-lineno">Línea ${err.lineno}</div>` : ''}
     <div class="error-msg">${esc(err.msg)}</div>
     ${pointerHtml}
+    ${jumpHint}
   </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   RENDER ALL — actualiza los 3 paneles con el resultado
+   RENDER ALL
    ══════════════════════════════════════════════════════════════ */
 function renderAll(output, ok) {
   const syms    = parseSymbols(output);
@@ -704,30 +908,21 @@ function renderAll(output, ok) {
   const errors  = parseErrors(output);
   const eliminated = inicial.length - optim.length;
 
-  /* ── Badge de estado ── */
   const badge = document.getElementById('status-badge');
-  if (ok) {
-    badge.className = 'badge badge-ok';
-    badge.textContent = '✓ Compilado';
-  } else {
-    badge.className = 'badge badge-error';
-    badge.textContent = '✗ Error';
-  }
+  if (ok) { badge.className = 'badge badge-ok';    badge.textContent = '✓ Compilado'; }
+  else     { badge.className = 'badge badge-error'; badge.textContent = '✗ Error';     }
 
-  /* ── Tab badges ── */
   const badgeC = document.getElementById('badge-compile');
   badgeC.textContent = errors.length > 0 ? errors.length : (ok ? '✓' : '!');
   badgeC.className   = 'tab-badge ' + (ok ? 'ok' : 'err');
 
   document.getElementById('badge-bytecode').textContent = optim.length || inicial.length || '—';
   document.getElementById('badge-symbols').textContent  = syms.length || '—';
-
-  /* ── Sub-tab badges ── */
-  document.getElementById('bsb-inicial').textContent = inicial.length;
+  document.getElementById('bsb-inicial').textContent    = inicial.length;
   const bsbOpt = document.getElementById('bsb-opt');
   bsbOpt.textContent = eliminated > 0 ? `${optim.length}  −${eliminated}` : String(optim.length);
 
-  /* ── Panel: Compilación ── */
+  /* Panel Compilación */
   const compileEl = document.getElementById('compile-result');
   let html = '';
   if (ok) {
@@ -741,18 +936,30 @@ function renderAll(output, ok) {
   } else {
     const errCount = errors.length;
     html += `<div class="result-header result-error">✗ &nbsp;Error de compilación${errCount ? ' — ' + errCount + ' error' + (errCount > 1 ? 'es' : '') : ''}</div>`;
-    if (errors.length) {
-      html += errors.map(renderErrorBlock).join('');
-    }
+    if (errors.length) html += errors.map(renderErrorBlock).join('');
   }
-  /* Output raw siempre visible (collapsable en fases futuras) */
   html += `<div class="section-title">Salida del compilador</div>
             <div class="output-raw">${esc(output)}</div>`;
   compileEl.innerHTML = html;
 
-  /* ── Panel: Bytecode ── */
-  document.getElementById('sub-inicial').innerHTML   = renderBytecodeTable(inicial);
+  /* Conectar handlers de salto a línea en los bloques de error */
+  compileEl.querySelectorAll('.error-block.jumpable[data-lineno]').forEach(block => {
+    const lineno = parseInt(block.dataset.lineno);
+    if (!lineno) return;
+    block.addEventListener('click', () => {
+      /* Ir a la línea en CodeMirror (0-indexed) */
+      cmEditor.setCursor({ line: lineno - 1, ch: 0 });
+      cmEditor.scrollIntoView({ line: lineno - 1, ch: 0 }, 120);
+      cmEditor.focus();
+      /* Resaltar brevemente la línea */
+      const mark = cmEditor.addLineClass(lineno - 1, 'background', 'cm-jump-highlight');
+      setTimeout(() => cmEditor.removeLineClass(lineno - 1, 'background', 'cm-jump-highlight'), 1200);
+      showToast(`→ Línea ${lineno}`, 'ok');
+    });
+  });
 
+  /* Panel Bytecode */
+  document.getElementById('sub-inicial').innerHTML = renderBytecodeTable(inicial);
   let optHtml = '';
   if (eliminated > 0) {
     optHtml += `<div class="opt-diff-banner">
@@ -764,7 +971,7 @@ function renderAll(output, ok) {
   optHtml += renderBytecodeTable(optim);
   document.getElementById('sub-optimizado').innerHTML = optHtml;
 
-  /* ── Panel: Símbolos ── */
+  /* Panel Símbolos */
   document.getElementById('symbols-content').innerHTML = renderSymbolsTable(syms);
 }
 
@@ -776,7 +983,7 @@ const btnRun     = document.getElementById('btn-run');
 const badge      = document.getElementById('status-badge');
 
 async function compilar() {
-  const code = document.getElementById('editor').value.trim();
+  const code = cmEditor.getValue().trim();
   if (!code) { showToast('El editor está vacío', 'error'); return; }
 
   btnCompile.disabled = true;
@@ -825,6 +1032,72 @@ async function ejecutar() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   GUARDAR / EXPORTAR
+   ══════════════════════════════════════════════════════════════ */
+
+/* Nombre del archivo actualmente abierto */
+let currentFilename = 'sin_titulo.scara';
+
+function _triggerDownload(filename, content) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function guardarRapido() {
+  const content = cmEditor.getValue();
+  if (!content.trim()) { showToast('El editor está vacío', 'error'); return; }
+  /* Si aún es "sin título", redirigir a Guardar como */
+  if (currentFilename === 'sin_titulo.scara') { guardarComo(); return; }
+  _triggerDownload(currentFilename, content);
+  showToast('💾 Guardado: ' + currentFilename, 'ok');
+}
+
+function guardarComo() {
+  const content = cmEditor.getValue();
+  if (!content.trim()) { showToast('El editor está vacío', 'error'); return; }
+  const input = prompt('Nombre del archivo:', currentFilename);
+  if (input === null) return; /* cancelado */
+  const filename = input.trim() || currentFilename;
+  const final    = filename.endsWith('.scara') ? filename : filename + '.scara';
+  currentFilename = final;
+  document.getElementById('current-filename').textContent = final;
+  _triggerDownload(final, content);
+  showToast('💾 Guardado como: ' + final, 'ok');
+}
+
+/* Dropdown del botón Guardar */
+const saveDropdownMenu = document.getElementById('save-dropdown-menu');
+
+function closeSaveDropdown() {
+  saveDropdownMenu.classList.remove('open');
+}
+function toggleSaveDropdown(e) {
+  e.stopPropagation();
+  saveDropdownMenu.classList.toggle('open');
+}
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  closeSaveDropdown();
+  guardarRapido();
+});
+document.getElementById('btn-save-arrow').addEventListener('click', toggleSaveDropdown);
+document.getElementById('menu-save-quick').addEventListener('click', () => {
+  closeSaveDropdown(); guardarRapido();
+});
+document.getElementById('menu-save-as').addEventListener('click', () => {
+  closeSaveDropdown(); guardarComo();
+});
+
+/* Cerrar dropdown al hacer clic en cualquier parte */
+document.addEventListener('click', closeSaveDropdown);
+
+/* ══════════════════════════════════════════════════════════════
    API: CARGAR EJEMPLO DE GALERÍA
    ══════════════════════════════════════════════════════════════ */
 async function cargarEjemplo(path, item) {
@@ -833,15 +1106,13 @@ async function cargarEjemplo(path, item) {
     const res = await fetch('/examples/' + path);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const code = await res.text();
-    const editor = document.getElementById('editor');
-    editor.value = code;
-    updateLineNumbers();
+    cmEditor.setValue(code);
+    cmEditor.clearHistory();
     updateCursor();
-    /* Nombre del archivo en la pestaña del editor */
     const filename = path.split('/').pop();
+    currentFilename = filename;
     document.getElementById('current-filename').textContent = filename;
     showToast('Cargado: ' + filename, 'ok');
-    /* Cambiar selección */
     document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
   } catch {
@@ -855,10 +1126,11 @@ async function cargarEjemplo(path, item) {
    NUEVO ARCHIVO
    ══════════════════════════════════════════════════════════════ */
 document.getElementById('btn-new').addEventListener('click', () => {
-  document.getElementById('editor').value = '';
+  cmEditor.setValue('');
+  cmEditor.clearHistory();
+  currentFilename = 'sin_titulo.scara';
   document.getElementById('current-filename').textContent = 'sin_titulo.scara';
   document.querySelectorAll('.gallery-item, .folder-file-item').forEach(i => i.classList.remove('active'));
-  updateLineNumbers();
   updateCursor();
 });
 
@@ -868,9 +1140,10 @@ document.getElementById('btn-new').addEventListener('click', () => {
 btnCompile.addEventListener('click', compilar);
 btnRun.addEventListener('click', ejecutar);
 
-/* Ctrl+Enter → compilar */
 document.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); compilar(); }
+  if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); guardarComo();    return; }
+  if (e.ctrlKey && e.key === 's')                { e.preventDefault(); guardarRapido(); return; }
+  if (e.ctrlKey && e.key === 'Enter')            { e.preventDefault(); compilar();      return; }
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -886,7 +1159,6 @@ document.querySelectorAll('.output-tab').forEach(tab => {
   });
 });
 
-/* SUB-TABS DE BYTECODE */
 document.querySelectorAll('.bytecode-sub-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const target = tab.dataset.sub;
@@ -911,7 +1183,7 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   GALERÍA — clic en ítem carga el archivo desde el servidor
+   GALERÍA
    ══════════════════════════════════════════════════════════════ */
 document.querySelectorAll('.gallery-item').forEach(item => {
   item.addEventListener('click', () => {
@@ -921,7 +1193,7 @@ document.querySelectorAll('.gallery-item').forEach(item => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   CARPETA LOCAL — File API (sin servidor)
+   CARPETA LOCAL — File API
    ══════════════════════════════════════════════════════════════ */
 const folderInput    = document.getElementById('folder-input');
 const folderDropZone = document.getElementById('folder-drop-zone');
@@ -932,10 +1204,7 @@ folderInput.addEventListener('change', () => {
   const allFiles = Array.from(folderInput.files);
   const files    = allFiles.filter(f => f.name.endsWith('.scara'))
                            .sort((a, b) => a.name.localeCompare(b.name));
-
-  const dirName  = allFiles[0]
-    ? allFiles[0].webkitRelativePath.split('/')[0]
-    : '—';
+  const dirName  = allFiles[0] ? allFiles[0].webkitRelativePath.split('/')[0] : '—';
 
   document.getElementById('folder-name').textContent  = dirName;
   document.getElementById('folder-count').textContent = files.length + ' archivo' + (files.length !== 1 ? 's' : '');
@@ -959,11 +1228,12 @@ folderInput.addEventListener('change', () => {
     item.addEventListener('click', () => {
       listEl.querySelectorAll('.folder-file-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
+      currentFilename = files[idx].name;
       document.getElementById('current-filename').textContent = files[idx].name;
       const reader = new FileReader();
       reader.onload = e => {
-        document.getElementById('editor').value = e.target.result;
-        updateLineNumbers();
+        cmEditor.setValue(e.target.result);
+        cmEditor.clearHistory();
         updateCursor();
         showToast('Cargado: ' + files[idx].name, 'ok');
       };
@@ -973,41 +1243,44 @@ folderInput.addEventListener('change', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   EDITOR — numeración y cursor
+   CURSOR EN BARRA DE ESTADO
    ══════════════════════════════════════════════════════════════ */
-const editor       = document.getElementById('editor');
-const lineNums     = document.getElementById('line-numbers');
 const statusCursor = document.getElementById('status-cursor');
 
-function updateLineNumbers() {
-  const count = editor.value.split('\n').length;
-  let html = '';
-  for (let i = 1; i <= count; i++) html += `<span>${i}</span>`;
-  lineNums.innerHTML = html;
-}
-
 function updateCursor() {
-  const text = editor.value.substring(0, editor.selectionStart);
-  const line = text.split('\n').length;
-  const col  = text.split('\n').pop().length + 1;
-  statusCursor.textContent = `Línea ${line}, Col ${col}`;
+  if (!cmEditor) return;
+  const cur = cmEditor.getCursor();
+  statusCursor.textContent = `Línea ${cur.line + 1}, Col ${cur.ch + 1}`;
 }
 
-editor.addEventListener('input',  updateLineNumbers);
-editor.addEventListener('keyup',  updateCursor);
-editor.addEventListener('click',  updateCursor);
-editor.addEventListener('scroll', () => { lineNums.scrollTop = editor.scrollTop; });
-
-/* Tab → 4 espacios */
-editor.addEventListener('keydown', e => {
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const s = editor.selectionStart, end = editor.selectionEnd;
-    editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(end);
-    editor.selectionStart = editor.selectionEnd = s + 4;
-    updateLineNumbers();
-  }
+/* ══════════════════════════════════════════════════════════════
+   INICIALIZACIÓN DE CODEMIRROR
+   ══════════════════════════════════════════════════════════════ */
+let cmEditor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+  mode:            'scara',
+  lineNumbers:     true,
+  matchBrackets:   true,
+  styleActiveLine: true,
+  indentUnit:      4,
+  tabSize:         4,
+  indentWithTabs:  false,
+  lineWrapping:    false,
+  extraKeys: {
+    'Tab':        cm => cm.execCommand('insertSoftTab'),
+    'Ctrl-Space': cm => cm.showHint({ hint: scaraHint, completeSingle: false }),
+  },
 });
+
+/* CSS dinámico para el resaltado de línea de error */
+const jumpStyle = document.createElement('style');
+jumpStyle.textContent = `.cm-jump-highlight { background: rgba(100,181,246,0.18) !important; transition: background 1s; }`;
+document.head.appendChild(jumpStyle);
+
+cmEditor.on('change', () => {
+  _updateScaraSymbols(cmEditor.getValue());
+  cmEditor.setOption('mode', 'scara');
+});
+cmEditor.on('cursorActivity', updateCursor);
 
 /* ══════════════════════════════════════════════════════════════
    VERIFICAR SERVIDOR AL INICIO
@@ -1023,18 +1296,16 @@ editor.addEventListener('keydown', e => {
     if (r.ok) {
       document.getElementById('server-dot').style.background = 'var(--success)';
       document.getElementById('server-label').textContent = 'Servidor activo';
-      /* Cargar el primer ejemplo automáticamente */
       const firstItem = document.querySelector('.gallery-item[data-path]');
       if (firstItem) cargarEjemplo(firstItem.dataset.path, firstItem);
     }
   } catch {
-    document.getElementById('server-dot').style.background = 'var(--err)';
-    document.getElementById('server-dot').style.boxShadow  = '0 0 5px var(--err)';
-    document.getElementById('server-label').textContent = 'Servidor inactivo';
-    document.getElementById('status-badge').className   = 'badge badge-error';
-    document.getElementById('status-badge').textContent = '✗ Sin servidor';
+    document.getElementById('server-dot').style.background   = 'var(--err)';
+    document.getElementById('server-dot').style.boxShadow    = '0 0 5px var(--err)';
+    document.getElementById('server-label').textContent      = 'Servidor inactivo';
+    document.getElementById('status-badge').className        = 'badge badge-error';
+    document.getElementById('status-badge').textContent      = '✗ Sin servidor';
   }
-  updateLineNumbers();
   updateCursor();
 })();
 </script>

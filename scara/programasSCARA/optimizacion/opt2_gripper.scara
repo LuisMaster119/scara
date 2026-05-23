@@ -1,0 +1,18 @@
+PROGRAM opt2_gripper
+# Optimizacion: OPEN/CLOSE duplicados consecutivos se eliminan
+# El gripper no puede estar mas abierto/cerrado de lo que ya esta
+# Se esperan 4 instrucciones eliminadas del bytecode inicial
+POINT bandeja = 120 200 0
+POINT cinta   = 350  80 0
+OPEN
+OPEN
+MOVE bandeja
+CLOSE
+CLOSE
+WAIT 2
+MOVE cinta
+OPEN
+OPEN
+OPEN
+HOME
+END

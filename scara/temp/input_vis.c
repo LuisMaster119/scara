@@ -14,35 +14,30 @@ extern int traza_get_pinza(int idx);
 extern int traza_get_vel(int idx);
 
 /* --- Traza generada por el compilador SCARA --- */
-static const int TRAZA_LEN = 17;
+static const int TRAZA_LEN = 1;
 
-static const int traza_x[17] = {
-    0, 0, 40, 80, 120, 120, 120, 120, 120, 120, 120, 120, 163, 206, 250, 250,
+static const int traza_x[1] = {
     0
 };
-static const int traza_y[17] = {
-    0, 0, 50, 100, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+static const int traza_y[1] = {
     0
 };
-static const int traza_z[17] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+static const int traza_z[1] = {
     0
 };
-static const int traza_pinza[17] = {
-    1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+static const int traza_pinza[1] = {
     1
 };
-static const int traza_vel[17] = {
-    100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
+static const int traza_vel[1] = {
     100
 };
-static const int TRAZA_KF_LEN = 8;
+static const int TRAZA_KF_LEN = 1;
 
-static const int traza_kf[8] = {
-    0, 1, 2, 5, 6, 12, 15, 16
+static const int traza_kf[1] = {
+    0
 };
-static const int traza_kf_tipo[8] = {
-    1, 6, 2, 7, 9, 2, 6, 1
+static const int traza_kf_tipo[1] = {
+    1
 };
 
 #define WIN_W    900

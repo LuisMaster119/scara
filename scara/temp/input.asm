@@ -8,7 +8,7 @@ default rel
 section .data
 
     global traza_len
-    traza_len  dd  17
+    traza_len  dd  1
 
     global traza_x
     global traza_y
@@ -16,16 +16,11 @@ section .data
     global traza_pinza
     global traza_vel
 
-    traza_x        dd  0, 0, 40, 80, 120, 120, 120, 120, 120, 120, 120, 120, 163, 206, 250, 250, \
-                    0
-    traza_y        dd  0, 0, 50, 100, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, \
-                    0
-    traza_z        dd  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-                    0
-    traza_pinza    dd  1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, \
-                    1
-    traza_vel      dd  100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, \
-                    100
+    traza_x        dd  0
+    traza_y        dd  0
+    traza_z        dd  0
+    traza_pinza    dd  1
+    traza_vel      dd  100
 
 section .text
 

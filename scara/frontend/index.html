@@ -1036,7 +1036,11 @@ async function ejecutar() {
    ══════════════════════════════════════════════════════════════ */
 
 /* Nombre del archivo actualmente abierto */
-let currentFilename = 'sin_titulo.scara';
+let currentFilename   = 'sin_titulo.scara';
+
+/* File System Access API — disponible en Chrome/Edge 86+ */
+const FS_ACCESS       = ('showDirectoryPicker' in window && 'showSaveFilePicker' in window);
+let   currentFileHandle = null;   // FileSystemFileHandle del archivo abierto (para guardar directo)
 
 function _triggerDownload(filename, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -1049,20 +1053,60 @@ function _triggerDownload(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-function guardarRapido() {
+async function guardarRapido() {
   const content = cmEditor.getValue();
   if (!content.trim()) { showToast('El editor está vacío', 'error'); return; }
-  /* Si aún es "sin título", redirigir a Guardar como */
+
+  /* Tenemos un handle de File System Access → escritura directa al disco */
+  if (currentFileHandle) {
+    try {
+      const writable = await currentFileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      showToast('💾 Guardado: ' + currentFilename, 'ok');
+    } catch (e) {
+      if (e.name !== 'AbortError') showToast('Error al guardar: ' + e.message, 'error');
+    }
+    return;
+  }
+
+  /* Sin handle: si es "sin título" redirigir a Guardar como; si no, descargar */
   if (currentFilename === 'sin_titulo.scara') { guardarComo(); return; }
   _triggerDownload(currentFilename, content);
   showToast('💾 Guardado: ' + currentFilename, 'ok');
 }
 
-function guardarComo() {
+async function guardarComo() {
   const content = cmEditor.getValue();
   if (!content.trim()) { showToast('El editor está vacío', 'error'); return; }
+
+  if (FS_ACCESS) {
+    /* Diálogo nativo de Windows "Guardar como" */
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: currentFilename,
+        types: [{
+          description: 'Programa SCARA',
+          accept: { 'text/plain': ['.scara'] },
+        }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      currentFileHandle = handle;
+      currentFilename   = handle.name;
+      document.getElementById('current-filename').textContent = handle.name;
+      showToast('💾 Guardado como: ' + handle.name, 'ok');
+    } catch (e) {
+      /* El usuario canceló el diálogo → AbortError, ignorar silenciosamente */
+      if (e.name !== 'AbortError') showToast('Error al guardar: ' + e.message, 'error');
+    }
+    return;
+  }
+
+  /* Fallback: prompt + descarga (navegadores sin File System Access API) */
   const input = prompt('Nombre del archivo:', currentFilename);
-  if (input === null) return; /* cancelado */
+  if (input === null) return;
   const filename = input.trim() || currentFilename;
   const final    = filename.endsWith('.scara') ? filename : filename + '.scara';
   currentFilename = final;
@@ -1110,7 +1154,8 @@ async function cargarEjemplo(path, item) {
     cmEditor.clearHistory();
     updateCursor();
     const filename = path.split('/').pop();
-    currentFilename = filename;
+    currentFilename   = filename;
+    currentFileHandle = null;   // archivo de galería → no tiene handle de escritura
     document.getElementById('current-filename').textContent = filename;
     showToast('Cargado: ' + filename, 'ok');
     document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
@@ -1128,7 +1173,8 @@ async function cargarEjemplo(path, item) {
 document.getElementById('btn-new').addEventListener('click', () => {
   cmEditor.setValue('');
   cmEditor.clearHistory();
-  currentFilename = 'sin_titulo.scara';
+  currentFilename   = 'sin_titulo.scara';
+  currentFileHandle = null;
   document.getElementById('current-filename').textContent = 'sin_titulo.scara';
   document.querySelectorAll('.gallery-item, .folder-file-item').forEach(i => i.classList.remove('active'));
   updateCursor();
@@ -1193,54 +1239,94 @@ document.querySelectorAll('.gallery-item').forEach(item => {
 });
 
 /* ══════════════════════════════════════════════════════════════
-   CARPETA LOCAL — File API
+   CARPETA LOCAL
+   Modo A (Chrome/Edge 86+): showDirectoryPicker → escritura directa
+   Modo B (fallback):        <input webkitdirectory> → FileReader
    ══════════════════════════════════════════════════════════════ */
 const folderInput    = document.getElementById('folder-input');
 const folderDropZone = document.getElementById('folder-drop-zone');
 
-folderDropZone.addEventListener('click', () => folderInput.click());
-
-folderInput.addEventListener('change', () => {
-  const allFiles = Array.from(folderInput.files);
-  const files    = allFiles.filter(f => f.name.endsWith('.scara'))
-                           .sort((a, b) => a.name.localeCompare(b.name));
-  const dirName  = allFiles[0] ? allFiles[0].webkitRelativePath.split('/')[0] : '—';
+/* Actualiza la lista visual a partir de un array de { name, handle|file } */
+function _populateFolderList(dirName, entries) {
+  // entries: [{ name:string, handle?:FileSystemFileHandle, file?:File }]
+  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
 
   document.getElementById('folder-name').textContent  = dirName;
-  document.getElementById('folder-count').textContent = files.length + ' archivo' + (files.length !== 1 ? 's' : '');
+  document.getElementById('folder-count').textContent =
+    sorted.length + ' archivo' + (sorted.length !== 1 ? 's' : '');
   document.getElementById('folder-info').style.display = 'flex';
   folderDropZone.style.display = 'none';
 
   const listEl = document.getElementById('folder-file-list');
-  if (!files.length) {
+  if (!sorted.length) {
     listEl.innerHTML = '<div class="folder-empty">No se encontraron archivos <code style="color:var(--kw)">.scara</code></div>';
     return;
   }
 
-  listEl.innerHTML = files.map((f, i) =>
+  listEl.innerHTML = sorted.map((entry, i) =>
     `<div class="folder-file-item" data-idx="${i}">
        <span class="fext">.scara</span>
-       ${esc(f.name.replace(/\.scara$/, ''))}
+       ${esc(entry.name.replace(/\.scara$/, ''))}
      </div>`
   ).join('');
 
   listEl.querySelectorAll('.folder-file-item').forEach((item, idx) => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', async () => {
       listEl.querySelectorAll('.folder-file-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
-      currentFilename = files[idx].name;
-      document.getElementById('current-filename').textContent = files[idx].name;
-      const reader = new FileReader();
-      reader.onload = e => {
-        cmEditor.setValue(e.target.result);
-        cmEditor.clearHistory();
-        updateCursor();
-        showToast('Cargado: ' + files[idx].name, 'ok');
-      };
-      reader.readAsText(files[idx]);
+      const entry = sorted[idx];
+
+      // Leer contenido (desde FileSystemFileHandle o File clásico)
+      let text;
+      if (entry.handle) {
+        const fileObj = await entry.handle.getFile();
+        text = await fileObj.text();
+        currentFileHandle = entry.handle;   // ← escritura directa habilitada
+      } else {
+        text = await entry.file.text();
+        currentFileHandle = null;           // fallback: sin handle
+      }
+
+      currentFilename = entry.name;
+      document.getElementById('current-filename').textContent = entry.name;
+      cmEditor.setValue(text);
+      cmEditor.clearHistory();
+      updateCursor();
+      showToast('Cargado: ' + entry.name, 'ok');
     });
   });
-});
+}
+
+/* ── Modo A: File System Access API ── */
+if (FS_ACCESS) {
+  folderDropZone.addEventListener('click', async () => {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const entries   = [];
+      for await (const [name, handle] of dirHandle.entries()) {
+        if (handle.kind === 'file' && name.endsWith('.scara')) {
+          entries.push({ name, handle });
+        }
+      }
+      _populateFolderList(dirHandle.name, entries);
+    } catch (e) {
+      /* El usuario canceló el selector → AbortError, ignorar */
+      if (e.name !== 'AbortError') showToast('Error al abrir carpeta: ' + e.message, 'error');
+    }
+  });
+} else {
+  /* ── Modo B: <input webkitdirectory> (Firefox, Safari, etc.) ── */
+  folderDropZone.addEventListener('click', () => folderInput.click());
+
+  folderInput.addEventListener('change', () => {
+    const allFiles = Array.from(folderInput.files);
+    const dirName  = allFiles[0] ? allFiles[0].webkitRelativePath.split('/')[0] : '—';
+    const entries  = allFiles
+      .filter(f => f.name.endsWith('.scara'))
+      .map(f => ({ name: f.name, file: f }));
+    _populateFolderList(dirName, entries);
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════
    CURSOR EN BARRA DE ESTADO

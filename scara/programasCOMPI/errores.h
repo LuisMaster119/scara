@@ -10,5 +10,6 @@ typedef enum {
 void error_init(const char* fuente);
 void error_reportar(TipoError tipo, int linea,
                     const char* token, const char* mensaje);
+int  error_hubo(void);   /* retorna 1 si hubo al menos un error */
 
 #endif

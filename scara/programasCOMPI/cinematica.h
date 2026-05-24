@@ -2,7 +2,10 @@
 #define CINEMATICA_H
 
 #define CIN_MODO_CODO_ARRIBA 0
-#define CIN_MODO_CODO_ABAJO 1
+#define CIN_MODO_CODO_ABAJO  1
+
+#define CIN_Z_MIN   0     /* altura mínima: nivel de mesa (mm)   */
+#define CIN_Z_MAX 100     /* recorrido vertical máximo del eje Z (mm) */
 
 int cinematica_ik_xy_modo(int x, int y, int modo, int* q1_deg, int* q2_deg);
 int cinematica_ik_xy(int x, int y, int* q1_deg, int* q2_deg);

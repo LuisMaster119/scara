@@ -33,6 +33,7 @@ static char RUTA_SCARA_IN [MAX_PATH];
 static char RUTA_EXE_OUT  [MAX_PATH];
 static char RUTA_INDEX    [MAX_PATH];
 static char RUTA_EJEMPLOS [MAX_PATH];  /* programasSCARA\ */
+static char RUTA_LOGO     [MAX_PATH];  /* frontend\logo.png */
 #define PUERTO 8080
 
 /* Construye una ruta absoluta: base_dir + "\\" + sufijo → dst */
@@ -254,6 +255,40 @@ static void servir_ejemplo(SOCKET s, const char *relpath) {
     fclose(f);
 }
 
+/* Servir un archivo binario con el Content-Type indicado */
+static void servir_binario(SOCKET s, const char *ruta, const char *content_type) {
+    FILE *f = fopen(ruta, "rb");
+    if (!f) {
+        const char *err =
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Length: 13\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "404 Not Found";
+        enviar_todo(s, err, (int)strlen(err));
+        return;
+    }
+    fseek(f, 0, SEEK_END);
+    long tam = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char headers[512];
+    snprintf(headers, sizeof(headers),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: %s\r\n"
+        "Access-Control-Allow-Origin: *\r\n"
+        "Cache-Control: max-age=86400\r\n"
+        "Content-Length: %ld\r\n"
+        "Connection: close\r\n"
+        "\r\n",
+        content_type, tam);
+    enviar_todo(s, headers, (int)strlen(headers));
+    char chunk[8192];
+    int n;
+    while ((n = (int)fread(chunk, 1, sizeof(chunk), f)) > 0)
+        enviar_todo(s, chunk, n);
+    fclose(f);
+}
+
 /* Servir un archivo estatico (para index.html) */
 static void servir_archivo(SOCKET s, const char *ruta) {
     FILE *f = fopen(ruta, "rb");
@@ -428,6 +463,13 @@ static void manejar_conexion(SOCKET cliente) {
         return;
     }
 
+    /* ── GET /logo.png ── */
+    if (strcmp(metodo, "GET") == 0 && strcmp(uri, "/logo.png") == 0) {
+        servir_binario(cliente, RUTA_LOGO, "image/png");
+        closesocket(cliente);
+        return;
+    }
+
     /* ── POST /compile ── */
     if (strcmp(metodo, "POST") == 0 && strcmp(uri, "/compile") == 0) {
         /* El body empieza despues de \r\n\r\n */
@@ -547,6 +589,7 @@ int main(void) {
     construir_ruta(RUTA_EXE_OUT,   dir_base, "temp\\input.exe");
     construir_ruta(RUTA_INDEX,     dir_base, "frontend\\index.html");
     construir_ruta(RUTA_EJEMPLOS,  dir_base, "programasSCARA");
+    construir_ruta(RUTA_LOGO,      dir_base, "frontend\\logo.png");
 
     /* Crear carpeta temp si no existe */
     CreateDirectoryA(RUTA_TEMP, NULL);

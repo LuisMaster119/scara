@@ -45,6 +45,25 @@ int main(int argc, char* argv[]) {
     parser_init(&parser, &lex);
     parsear_programa(&parser);
 
+    /* Si hubo errores de compilación, mostrar tablas y salir sin generar código */
+    if (error_hubo()) {
+        printf("\n=== TABLA DE SIMBOLOS ===\n");
+        tabla_imprimir();
+        printf("\n=== BYTECODE GENERADO ===\n");
+        printf("%-4s %-14s %-6s %-6s %-6s %-5s %-14s %-14s %-14s\n",
+               "PC", "OPCODE", "ARG1", "ARG2", "ARG3", "FLAGS", "SVAL", "SVAL2", "SVAL3");
+        printf("-----------------------------------------------------------------------------------------\n");
+        for (int i = 0; i < bytecode_len; i++) {
+            Instruccion* ins = &bytecode[i];
+            printf("%-4d %-14s %-6d %-6d %-6d %-5d %-14s %-14s %-14s\n",
+                   i, opcode_a_texto(ins->opcode),
+                   ins->arg1, ins->arg2, ins->arg3, ins->flags,
+                   ins->sval, ins->sval2, ins->sval3);
+        }
+        free(programa);
+        return 1;
+    }
+
     printf("\n=== TABLA DE SIMBOLOS ===\n");
     tabla_imprimir();
 

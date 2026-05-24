@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCARA IDE</title>
+  <title>SCARA IDE v2.1</title>
+  <link rel="icon" type="image/png" href="logo.png">
   <!-- CodeMirror 5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
@@ -60,10 +61,9 @@
     }
     .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px;
       letter-spacing: 2.5px; color: var(--kw); text-transform: uppercase; }
-    .logo-icon { width: 30px; height: 30px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--point) 100%);
-      border-radius: 7px; display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 900; color: white; box-shadow: 0 2px 8px rgba(30,136,229,0.4); }
+    .logo-icon { width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 7px; overflow: hidden; object-fit: cover;
+      outline: 1px solid rgba(100,181,246,0.2); display: block; }
     .logo-sub { font-size: 9px; font-weight: 400; color: var(--text-muted); letter-spacing: 1px;
       margin-left: -6px; align-self: flex-end; margin-bottom: 3px; }
     .navbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
@@ -146,11 +146,7 @@
     .gallery-group-label { padding: 8px 14px 3px; font-size: 10px; font-weight: 700; letter-spacing: 1px;
       color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .dot-ok  { background: var(--success); box-shadow: 0 0 4px var(--success); }
-    .dot-opt { background: var(--opt);     box-shadow: 0 0 4px var(--opt);     }
-    .dot-lex { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
-    .dot-syn { background: var(--point);   box-shadow: 0 0 4px var(--point);   }
-    .dot-sem { background: var(--err);     box-shadow: 0 0 4px var(--err);     }
+    .dot-ok, .dot-opt, .dot-lex, .dot-syn, .dot-sem { background: var(--kw); }
 
     .gallery-item { padding: 5px 14px 5px 22px; cursor: pointer; border-left: 2px solid transparent;
       font-size: 12px; color: var(--text-dim); transition: all 0.12s;
@@ -159,7 +155,7 @@
     .gallery-item:hover { background: rgba(30,136,229,0.07); color: var(--text); border-left-color: var(--accent2); }
     .gallery-item.active { background: rgba(30,136,229,0.12); color: var(--kw); border-left-color: var(--accent); }
     .gallery-item.loading { opacity: 0.6; cursor: wait; }
-    .file-icon { font-size: 10px; opacity: 0.55; flex-shrink: 0; }
+    .file-icon { font-size: 10px; color: var(--kw); opacity: 0.7; flex-shrink: 0; }
     .sidebar-divider { height: 1px; background: var(--border); margin: 3px 10px; }
 
     /* Vista Carpeta */
@@ -186,16 +182,87 @@
       border: 1px solid #2A2A4A; border-radius: 3px; padding: 1px 4px; color: var(--text-muted); flex-shrink: 0; }
     .folder-empty { padding: 20px 14px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
+    /* ══ DOCS ══ */
+    .docs-content { padding: 6px 0 20px; }
+
+    .docs-section { border-bottom: 1px solid var(--border); }
+    .docs-section:last-child { border-bottom: none; }
+    .docs-hdr {
+      padding: 8px 14px; font-size: 10px; font-weight: 700; letter-spacing: 0.9px;
+      text-transform: uppercase; color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; gap: 7px; transition: color 0.12s, background 0.12s;
+      user-select: none;
+    }
+    .docs-hdr:hover { color: var(--kw); background: rgba(100,181,246,0.04); }
+    .docs-hdr .dh-icon { font-size: 13px; flex-shrink: 0; }
+    .docs-hdr .dh-arrow {
+      margin-left: auto; font-size: 9px; color: var(--text-muted);
+      transition: transform 0.18s; transform: rotate(0deg);
+    }
+    .docs-section.ds-open .dh-arrow { transform: rotate(90deg); }
+    .docs-section.ds-open .docs-hdr { color: var(--kw); }
+
+    .docs-body { display: none; padding: 2px 10px 10px 10px; }
+    .docs-section.ds-open .docs-body { display: block; }
+
+    .docs-cmd { margin-bottom: 8px; }
+    .docs-sig {
+      font-family: 'Consolas','Courier New',monospace; font-size: 11.5px;
+      background: var(--panel2); border-left: 2px solid var(--accent2);
+      padding: 5px 9px; border-radius: 0 5px 5px 0; line-height: 1.6;
+      color: var(--text); white-space: pre;
+    }
+    .docs-sig.ds-example {
+      border-left-color: var(--border); font-size: 11px;
+      color: var(--text-dim);
+    }
+    .docs-desc {
+      font-size: 11px; color: var(--text-muted); padding: 3px 9px 0;
+      line-height: 1.5;
+    }
+    .docs-note {
+      font-size: 10.5px; color: var(--text-muted);
+      background: rgba(100,181,246,0.05); border: 1px solid rgba(100,181,246,0.12);
+      border-radius: 5px; padding: 6px 9px; margin: 6px 0; line-height: 1.55;
+    }
+    .docs-note strong { color: var(--kw); }
+    .docs-note .dn-warn { color: var(--warning); font-weight: 700; }
+    .docs-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+    /* token colours inside docs */
+    .dk  { color: var(--kw); }       /* keyword */
+    .dv  { color: var(--var); }      /* variable */
+    .dp  { color: var(--point); }    /* point */
+    .dn  { color: var(--num); }      /* number */
+    .ds  { color: var(--str); }      /* string */
+    .dc  { color: var(--cmt); }      /* comment */
+    .do  { color: var(--opt); }      /* operator/special */
+
     /* ══ EDITOR ══ */
     .editor-area { grid-area: editor; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
     .editor-tabs { display: flex; align-items: center; background: var(--panel);
-      border-bottom: 1px solid var(--border); padding: 0 8px; min-height: 36px; }
+      border-bottom: 1px solid var(--border); min-height: 36px; overflow-x: auto; }
+    .editor-tabs::-webkit-scrollbar { height: 0; }
+    #editor-tabs-list { display: flex; align-items: stretch; padding: 0 4px; }
     .editor-tab { padding: 8px 16px; font-size: 12px; cursor: pointer; color: var(--text-muted);
       border-bottom: 2px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
     .editor-tab:hover { color: var(--text-dim); }
     .editor-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-    .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); display: none; }
-    .editor-tab.modified .tab-dot { display: block; }
+    .tab-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .editor-tab.modified .tab-dot { background: var(--warning); }
+    .editor-tab.clean    .tab-dot { background: var(--kw); opacity: 0.6; }
+    .editor-tab.errored  .tab-dot { background: var(--err); }
+
+    .tab-close {
+      width: 14px; height: 14px; border-radius: 3px; margin-left: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; line-height: 1; color: var(--text-muted); cursor: pointer;
+      opacity: 0; transition: opacity 0.15s, background 0.15s; flex-shrink: 0;
+    }
+    .editor-tab:hover .tab-close { opacity: 0.55; }
+    .editor-tab.active .tab-close { opacity: 0.45; }
+    .tab-close:hover { background: rgba(255,255,255,0.1); color: var(--text); opacity: 1 !important; }
+    .tab-filename { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .editor-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
@@ -305,7 +372,7 @@
       color: var(--text-muted); border-bottom: 2px solid transparent; transition: color 0.15s;
       display: flex; align-items: center; gap: 6px; white-space: nowrap; }
     .bytecode-sub-tab:hover { color: var(--text-dim); }
-    .bytecode-sub-tab.active { color: var(--text); border-bottom-color: var(--point); }
+    .bytecode-sub-tab.active { color: var(--text); border-bottom-color: #1A1A30; }
     .bytecode-sub-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; font-family: 'Segoe UI', sans-serif; }
     .bsb-inicial { background: #1A1A30; color: var(--text-dim); border: 1px solid #2A2A4A; }
     .bsb-opt     { background: #0A2010; color: var(--success);  border: 1px solid #1B4A2A; }
@@ -377,9 +444,9 @@
   <!-- ══ NAVBAR ══ -->
   <nav class="navbar">
     <div class="logo">
-      <div class="logo-icon">S</div>
+      <img class="logo-icon" src="logo.png" alt="SCARA IDE Logo">
       SCARA
-      <span class="logo-sub">IDE v1.0</span>
+      <span class="logo-sub">IDE v2.1</span>
     </div>
     <div class="navbar-divider"></div>
     <span class="badge badge-idle" id="status-badge">⬤ Listo</span>
@@ -444,6 +511,10 @@
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.5 14h-13A1.75 1.75 0 0 1 0 12.25V2.75c0-.464.184-.91.513-1.237Z"/></svg>
         Carpeta
       </div>
+      <div class="mode-btn" data-mode="docs">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>
+        Docs
+      </div>
     </div>
 
     <!-- Vista: Galería -->
@@ -453,14 +524,14 @@
         <!-- Correctos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-ok"></span>Correctos</div>
-          <div class="gallery-item active" data-path="correctos/c1_pickandplace.scara"><span class="file-icon">◆</span>c1_pickandplace</div>
-          <div class="gallery-item" data-path="correctos/c2_condicional.scara"><span class="file-icon">◆</span>c2_condicional</div>
-          <div class="gallery-item" data-path="correctos/c3_repeat.scara"><span class="file-icon">◆</span>c3_repeat</div>
-          <div class="gallery-item" data-path="correctos/c4_while.scara"><span class="file-icon">◆</span>c4_while</div>
-          <div class="gallery-item" data-path="correctos/c5_nested_while_if.scara"><span class="file-icon">◆</span>c5_nested_while_if</div>
-          <div class="gallery-item" data-path="correctos/c6_nested_repeat_if.scara"><span class="file-icon">◆</span>c6_nested_repeat_if</div>
-          <div class="gallery-item" data-path="correctos/c7_movej_stub.scara"><span class="file-icon">◆</span>c7_movej_stub</div>
-          <div class="gallery-item" data-path="correctos/c8_ik_bordes.scara"><span class="file-icon">◆</span>c8_ik_bordes</div>
+          <div class="gallery-item active" data-path="correctos/c1_pickandplace.scara"><span class="file-icon">○</span>c1_pickandplace</div>
+          <div class="gallery-item" data-path="correctos/c2_condicional.scara"><span class="file-icon">○</span>c2_condicional</div>
+          <div class="gallery-item" data-path="correctos/c3_repeat.scara"><span class="file-icon">○</span>c3_repeat</div>
+          <div class="gallery-item" data-path="correctos/c4_while.scara"><span class="file-icon">○</span>c4_while</div>
+          <div class="gallery-item" data-path="correctos/c5_nested_while_if.scara"><span class="file-icon">○</span>c5_nested_while_if</div>
+          <div class="gallery-item" data-path="correctos/c6_nested_repeat_if.scara"><span class="file-icon">○</span>c6_nested_repeat_if</div>
+          <div class="gallery-item" data-path="correctos/c7_movej_stub.scara"><span class="file-icon">○</span>c7_movej_stub</div>
+          <div class="gallery-item" data-path="correctos/c8_ik_bordes.scara"><span class="file-icon">○</span>c8_ik_bordes</div>
         </div>
         <div class="sidebar-divider"></div>
 
@@ -468,19 +539,19 @@
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-opt"></span>Optimización</div>
           <div class="gallery-item" data-path="optimizacion/opt1_speed.scara">
-            <span class="file-icon">⚡</span>opt1_speed_duplicado
+            <span class="file-icon">○</span>opt1_speed_duplicado
           </div>
           <div class="gallery-item" data-path="optimizacion/opt2_gripper.scara">
-            <span class="file-icon">⚡</span>opt2_gripper_duplicado
+            <span class="file-icon">○</span>opt2_gripper_duplicado
           </div>
           <div class="gallery-item" data-path="optimizacion/opt3_constantes.scara">
-            <span class="file-icon">⚡</span>opt3_plegado_constantes
+            <span class="file-icon">○</span>opt3_plegado_constantes
           </div>
           <div class="gallery-item" data-path="optimizacion/opt4_self_assign.scara">
-            <span class="file-icon">⚡</span>opt4_auto_asignacion
+            <span class="file-icon">○</span>opt4_auto_asignacion
           </div>
           <div class="gallery-item" data-path="optimizacion/opt5_combinado.scara">
-            <span class="file-icon">⚡</span>opt5_combinado
+            <span class="file-icon">○</span>opt5_combinado
           </div>
         </div>
         <div class="sidebar-divider"></div>
@@ -488,35 +559,35 @@
         <!-- Errores Léxicos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-lex"></span>Errores Léxicos</div>
-          <div class="gallery-item" data-path="erroresLexicos/lex1_caracter_desconocido.scara"><span class="file-icon">◇</span>lex1_caracter_desconocido</div>
-          <div class="gallery-item" data-path="erroresLexicos/lex2_signo_dolar.scara"><span class="file-icon">◇</span>lex2_signo_dolar</div>
-          <div class="gallery-item" data-path="erroresLexicos/lex3_porcentaje.scara"><span class="file-icon">◇</span>lex3_porcentaje</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex1_caracter_desconocido.scara"><span class="file-icon">○</span>lex1_caracter_desconocido</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex2_signo_dolar.scara"><span class="file-icon">○</span>lex2_signo_dolar</div>
+          <div class="gallery-item" data-path="erroresLexicos/lex3_porcentaje.scara"><span class="file-icon">○</span>lex3_porcentaje</div>
         </div>
         <div class="sidebar-divider"></div>
 
         <!-- Errores Sintácticos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-syn"></span>Errores Sintácticos</div>
-          <div class="gallery-item" data-path="erroresSintacticos/sint1_while_sin_end.scara"><span class="file-icon">◇</span>sint1_while_sin_end</div>
-          <div class="gallery-item" data-path="erroresSintacticos/sint2_point_incompleto.scara"><span class="file-icon">◇</span>sint2_point_incompleto</div>
-          <div class="gallery-item" data-path="erroresSintacticos/sint3_sin_nombre.scara"><span class="file-icon">◇</span>sint3_sin_nombre</div>
-          <div class="gallery-item" data-path="erroresSintacticos/sint4_var_sin_valor.scara"><span class="file-icon">◇</span>sint4_var_sin_valor</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint1_while_sin_end.scara"><span class="file-icon">○</span>sint1_while_sin_end</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint2_point_incompleto.scara"><span class="file-icon">○</span>sint2_point_incompleto</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint3_sin_nombre.scara"><span class="file-icon">○</span>sint3_sin_nombre</div>
+          <div class="gallery-item" data-path="erroresSintacticos/sint4_var_sin_valor.scara"><span class="file-icon">○</span>sint4_var_sin_valor</div>
         </div>
         <div class="sidebar-divider"></div>
 
         <!-- Errores Semánticos -->
         <div class="gallery-group">
           <div class="gallery-group-label"><span class="dot dot-sem"></span>Errores Semánticos</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es1_var_no_declarada.scara"><span class="file-icon">◇</span>es1_var_no_declarada</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es2_punto_no_declarado.scara"><span class="file-icon">◇</span>es2_punto_no_declarado</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es3_var_como_point.scara"><span class="file-icon">◇</span>es3_var_como_point</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es4_duplicado.scara"><span class="file-icon">◇</span>es4_duplicado</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es5_asignar_point.scara"><span class="file-icon">◇</span>es5_asignar_point</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es6_speed.scara"><span class="file-icon">◇</span>es6_speed</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es7_repeat.scara"><span class="file-icon">◇</span>es7_repeat</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es8_rango.scara"><span class="file-icon">◇</span>es8_rango</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es9_wait.scara"><span class="file-icon">◇</span>es9_wait</div>
-          <div class="gallery-item" data-path="erroresSemanticos/es10_runtime_move_fuera_alcance.scara"><span class="file-icon">◇</span>es10_runtime_move</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es1_var_no_declarada.scara"><span class="file-icon">○</span>es1_var_no_declarada</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es2_punto_no_declarado.scara"><span class="file-icon">○</span>es2_punto_no_declarado</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es3_var_como_point.scara"><span class="file-icon">○</span>es3_var_como_point</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es4_duplicado.scara"><span class="file-icon">○</span>es4_duplicado</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es5_asignar_point.scara"><span class="file-icon">○</span>es5_asignar_point</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es6_speed.scara"><span class="file-icon">○</span>es6_speed</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es7_repeat.scara"><span class="file-icon">○</span>es7_repeat</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es8_rango.scara"><span class="file-icon">○</span>es8_rango</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es9_wait.scara"><span class="file-icon">○</span>es9_wait</div>
+          <div class="gallery-item" data-path="erroresSemanticos/es10_runtime_move_fuera_alcance.scara"><span class="file-icon">○</span>es10_runtime_move</div>
         </div>
 
       </div>
@@ -540,15 +611,277 @@
         </div>
       </div>
     </div>
+
+    <!-- Vista: Documentación -->
+    <div class="sidebar-view" id="view-docs">
+      <div class="sidebar-scroll">
+        <div class="docs-content">
+
+          <!-- ── ESTRUCTURA GENERAL ── -->
+          <div class="docs-section ds-open">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Estructura general
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">PROGRAM</span> <span class="dv">nombre</span>
+  <span class="dc"># declaraciones y código</span>
+<span class="dk">END</span></div>
+                <div class="docs-desc">Todo programa comienza con <code>PROGRAM</code> seguido de un identificador y termina con <code>END</code>. Las declaraciones de variables y puntos van al inicio.</div>
+              </div>
+              <div class="docs-note">
+                <strong>Identificadores:</strong> letras, dígitos y <code>_</code>; deben iniciar con letra.<br>
+                <strong>Comentarios:</strong> <span class="dc"># cualquier texto hasta el fin de línea</span>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">PROGRAM</span> <span class="dv">ejemplo</span>
+  <span class="dk">VAR</span> <span class="dv">i</span> = <span class="dn">0</span>
+  <span class="dk">POINT</span> <span class="dp">origen</span> = <span class="dn">200 100 30</span>
+  <span class="dk">MOVE</span> <span class="dp">origen</span>
+<span class="dk">END</span></div>
+            </div>
+          </div>
+
+          <!-- ── DECLARACIONES ── -->
+          <div class="docs-section ds-open">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Declaraciones
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">VAR</span> <span class="dv">nombre</span> = <span class="dn">valor</span></div>
+                <div class="docs-desc">Declara una variable entera. Solo puede aparecer antes de las instrucciones ejecutables.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">VAR</span> <span class="dv">contador</span> = <span class="dn">0</span>
+<span class="dk">VAR</span> <span class="dv">velocidad</span> = <span class="dn">80</span></div>
+
+              <div class="docs-sep"></div>
+
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">POINT</span> <span class="dp">nombre</span> = <span class="dn">X Y Z</span></div>
+                <div class="docs-desc">Declara un punto cartesiano en milímetros. Las coordenadas son enteras.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">POINT</span> <span class="dp">encima_caja</span> = <span class="dn">300 150 50</span>
+<span class="dk">POINT</span> <span class="dp">caja</span>       = <span class="dn">300 150  0</span></div>
+              <div class="docs-note">
+                <strong>Límites del robot (L1=200 mm, L2=150 mm):</strong><br>
+                • Radio XY: <strong>50 – 350 mm</strong> desde la base<br>
+                • Altura Z: <strong>0 – 100 mm</strong> (0 = nivel de mesa)<br>
+                • Coordenadas fuera de rango generan error semántico.
+              </div>
+            </div>
+          </div>
+
+          <!-- ── MOVIMIENTO ── -->
+          <div class="docs-section ds-open">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Movimiento
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">MOVE</span> <span class="dp">punto</span>
+<span class="dk">MOVE</span> <span class="dn">X Y Z</span></div>
+                <div class="docs-desc">Mueve el TCP al destino en <strong>línea recta</strong> (interpolación cartesiana). Acepta un POINT declarado o coordenadas literales.</div>
+              </div>
+
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">MOVEJ</span> <span class="dp">punto</span>
+<span class="dk">MOVEJ</span> <span class="dn">X Y Z</span></div>
+                <div class="docs-desc">Mueve al destino por <strong>interpolación de articulaciones</strong>. Más rápido que MOVE pero la trayectoria no es recta.</div>
+              </div>
+
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">APPROACH</span> <span class="dp">punto</span>
+<span class="dk">APPROACH</span> <span class="dn">X Y Z</span></div>
+                <div class="docs-desc">Aproximación <strong>vertical descendente</strong> al punto objetivo. Útil para descender sobre una pieza antes de cerrar la garra.</div>
+              </div>
+
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">DEPART</span> <span class="dn">distancia</span></div>
+                <div class="docs-desc">Sube verticalmente <em>distancia</em> mm desde la posición actual. Debe ser <strong>&gt; 0</strong>.</div>
+              </div>
+
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">HOME</span></div>
+                <div class="docs-desc">Retorna el robot a la posición de reposo (origen cinemático).</div>
+              </div>
+
+              <div class="docs-sig ds-example"><span class="dk">APPROACH</span> <span class="dp">encima_caja</span>
+<span class="dk">MOVE</span>     <span class="dp">caja</span>
+<span class="dk">CLOSE</span>
+<span class="dk">DEPART</span>   <span class="dn">50</span>
+<span class="dk">MOVE</span>     <span class="dp">destino</span>
+<span class="dk">OPEN</span>
+<span class="dk">HOME</span></div>
+            </div>
+          </div>
+
+          <!-- ── GARRA ── -->
+          <div class="docs-section">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Garra
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">OPEN</span></div>
+                <div class="docs-desc">Abre la garra del efector final.</div>
+              </div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">CLOSE</span></div>
+                <div class="docs-desc">Cierra la garra para sujetar un objeto.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── CONTROL DE FLUJO ── -->
+          <div class="docs-section ds-open">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Control de flujo
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">IF</span> <span class="dv">expr</span> <span class="do">op</span> <span class="dv">expr</span>
+  <span class="dc"># bloque verdadero</span>
+<span class="dk">ELSE</span>
+  <span class="dc"># bloque falso (opcional)</span>
+<span class="dk">END</span></div>
+                <div class="docs-desc">Ejecuta el bloque si la condición es verdadera. El <code>ELSE</code> es opcional.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">IF</span> <span class="dv">i</span> &lt; <span class="dn">5</span>
+  <span class="dk">MOVE</span> <span class="dp">posA</span>
+<span class="dk">ELSE</span>
+  <span class="dk">MOVE</span> <span class="dp">posB</span>
+<span class="dk">END</span></div>
+
+              <div class="docs-sep"></div>
+
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">WHILE</span> <span class="dv">expr</span> <span class="do">op</span> <span class="dv">expr</span>
+  <span class="dc"># bloque</span>
+<span class="dk">END</span></div>
+                <div class="docs-desc">Repite el bloque mientras la condición sea verdadera.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">WHILE</span> <span class="dv">i</span> &lt; <span class="dn">10</span>
+  <span class="dk">MOVE</span> <span class="dp">pos</span>
+  <span class="dv">i</span> = <span class="dv">i</span> + <span class="dn">1</span>
+<span class="dk">END</span></div>
+
+              <div class="docs-sep"></div>
+
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">REPEAT</span> <span class="dn">N</span>
+  <span class="dc"># bloque</span>
+<span class="dk">END</span></div>
+                <div class="docs-desc">Repite el bloque exactamente <em>N</em> veces. <em>N</em> debe ser un entero positivo literal.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">REPEAT</span> <span class="dn">3</span>
+  <span class="dk">MOVE</span> <span class="dp">pick</span>
+  <span class="dk">CLOSE</span>
+  <span class="dk">MOVE</span> <span class="dp">place</span>
+  <span class="dk">OPEN</span>
+<span class="dk">END</span></div>
+              <div class="docs-note">
+                <strong>Operadores de condición:</strong> &nbsp;<span class="do">&lt;</span> &nbsp;<span class="do">&gt;</span> &nbsp;<span class="do">==</span><br>
+                Los operandos pueden ser <span class="dv">variables</span> o <span class="dn">literales numéricos</span>. No se permiten POINTs en condiciones.
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ASIGNACIÓN ── -->
+          <div class="docs-section">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Asignación
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dv">var</span> = <span class="dv">expr</span>
+<span class="dv">var</span> = <span class="dv">expr</span> + <span class="dv">expr</span>
+<span class="dv">var</span> = <span class="dv">expr</span> - <span class="dv">expr</span></div>
+                <div class="docs-desc">Asigna un valor a una variable. Las expresiones pueden ser <span class="dn">literales</span> o <span class="dv">variables</span>. Solo se admite un operador por instrucción.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dv">contador</span> = <span class="dn">0</span>
+<span class="dv">contador</span> = <span class="dv">contador</span> + <span class="dn">1</span>
+<span class="dv">total</span>    = <span class="dv">a</span> - <span class="dv">b</span></div>
+              <div class="docs-note">No se puede asignar a un <span class="dp">POINT</span> — solo a variables declaradas con <span class="dk">VAR</span>.</div>
+            </div>
+          </div>
+
+          <!-- ── COMANDOS AUXILIARES ── -->
+          <div class="docs-section">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Comandos auxiliares
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">SPEED</span> <span class="dn">N</span>
+<span class="dk">SPEED</span> <span class="dv">var</span></div>
+                <div class="docs-desc">Establece la velocidad de movimiento. Rango: <strong>0 – 100</strong> (porcentaje). Admite literal o variable.</div>
+              </div>
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">WAIT</span> <span class="dn">ms</span>
+<span class="dk">WAIT</span> <span class="dv">var</span></div>
+                <div class="docs-desc">Pausa la ejecución por <em>ms</em> milisegundos. Debe ser <strong>&gt; 0</strong>. Admite literal o variable.</div>
+              </div>
+              <div class="docs-sep"></div>
+              <div class="docs-cmd">
+                <div class="docs-sig"><span class="dk">PRINT</span> <span class="ds">"mensaje"</span></div>
+                <div class="docs-desc">Imprime un texto en la consola de ejecución. El argumento debe ser una cadena entre comillas dobles.</div>
+              </div>
+              <div class="docs-sig ds-example"><span class="dk">SPEED</span> <span class="dn">75</span>
+<span class="dk">WAIT</span>  <span class="dn">500</span>
+<span class="dk">PRINT</span> <span class="ds">"Ciclo completado"</span></div>
+            </div>
+          </div>
+
+          <!-- ── LÍMITES Y ERRORES ── -->
+          <div class="docs-section">
+            <div class="docs-hdr">
+              <span class="dh-icon">○</span> Límites y errores
+              <span class="dh-arrow">▶</span>
+            </div>
+            <div class="docs-body">
+              <div class="docs-note">
+                <strong>Errores léxicos</strong> — caracteres inválidos (<code>$</code>, <code>%</code>, <code>@</code>, etc.)
+              </div>
+              <div class="docs-note">
+                <strong>Errores sintácticos</strong> — estructura incorrecta: falta de <code>END</code>, argumentos incompletos, tokens inesperados.
+              </div>
+              <div class="docs-note">
+                <strong>Errores semánticos</strong> — uso incorrecto del significado:<br>
+                • Variable o punto no declarado antes de usarse<br>
+                • Nombre declarado dos veces (<em>duplicado</em>)<br>
+                • Usar un POINT donde se espera VAR o viceversa<br>
+                • Coordenadas XY fuera de alcance (50–350 mm) o Z fuera de [0–100 mm]<br>
+                • <span class="dn">SPEED</span> fuera de [0, 100]<br>
+                • <span class="dn">WAIT</span> / <span class="dn">DEPART</span> / <span class="dn">REPEAT</span> ≤ 0
+              </div>
+              <div class="docs-note">
+                El compilador usa <strong>modo pánico</strong>: al encontrar un error salta al siguiente punto seguro y continúa evaluando, reportando todos los errores reales del programa en una sola pasada.
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /docs-content -->
+      </div><!-- /sidebar-scroll -->
+    </div><!-- /view-docs -->
+
   </aside>
 
   <!-- ══ EDITOR ══ -->
   <main class="editor-area">
     <div class="editor-tabs">
-      <div class="editor-tab active modified">
-        <span id="current-filename">sin_titulo.scara</span>
-        <span class="tab-dot"></span>
-      </div>
+      <div id="editor-tabs-list"></div>
     </div>
     <div class="editor-body">
       <textarea id="editor" style="display:none"></textarea>
@@ -602,7 +935,7 @@
 
   <!-- Status bar -->
   <footer class="status-bar">
-    <span class="status-item">SCARA IDE v1.0</span>
+    <span class="status-item">SCARA IDE v2.1</span>
     <span class="status-sep"></span>
     <span class="status-item" id="status-cursor">Línea 1, Col 1</span>
     <span class="status-sep"></span>
@@ -741,7 +1074,7 @@ function parseSymbols(text) {
     const v1   = parseInt(line.substring(25, 31)) || 0;
     const v2   = parseInt(line.substring(32, 38)) || 0;
     const v3   = parseInt(line.substring(39, 45)) || 0;
-    if (name) syms.push({ name, type, v1, v2, v3 });
+    if (name && !/^-+$/.test(name)) syms.push({ name, type, v1, v2, v3 });
   }
   return syms;
 }
@@ -835,15 +1168,13 @@ function renderBytecodeTable(instrs) {
     <td class="cell-idx">${ins.pc}</td>
     <td><span class="opcode-badge ${opcodeClass(ins.opcode)}">${esc(ins.opcode)}</span></td>
     ${cellNum(ins.arg1)}${cellNum(ins.arg2)}${cellNum(ins.arg3)}
-    ${cellSval(ins.sval,  ins.opcode, 'sval')}
-    ${cellSval(ins.sval2, ins.opcode, 'sval2')}
-    ${cellSval(ins.sval3, ins.opcode, 'sval3')}
+    ${cellSval(ins.sval, ins.opcode, 'sval')}
   </tr>`).join('');
   return `<table class="data-table">
     <thead><tr>
       <th class="cell-idx">#</th><th>Opcode</th>
       <th class="cell-num">arg1</th><th class="cell-num">arg2</th><th class="cell-num">arg3</th>
-      <th>Destino / sval</th><th>Op.Izq</th><th>Op.Der</th>
+      <th>Símbolo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -920,7 +1251,7 @@ function renderAll(output, ok) {
   document.getElementById('badge-symbols').textContent  = syms.length || '—';
   document.getElementById('bsb-inicial').textContent    = inicial.length;
   const bsbOpt = document.getElementById('bsb-opt');
-  bsbOpt.textContent = eliminated > 0 ? `${optim.length}  −${eliminated}` : String(optim.length);
+  bsbOpt.textContent = String(optim.length);
 
   /* Panel Compilación */
   const compileEl = document.getElementById('compile-result');
@@ -929,8 +1260,8 @@ function renderAll(output, ok) {
     html += `<div class="result-header result-ok">✓ &nbsp;Compilación exitosa</div>`;
     html += `<div class="result-stats">
       <div class="stat-card"><div class="stat-label">Instrucciones</div><div class="stat-value" style="color:var(--kw)">${optim.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Símbolos</div><div class="stat-value" style="color:var(--point)">${syms.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Optimizadas</div><div class="stat-value" style="color:var(--success)">${eliminated}</div></div>
+      <div class="stat-card"><div class="stat-label">Símbolos</div><div class="stat-value" style="color:var(--kw)">${syms.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Optimizadas</div><div class="stat-value" style="color:var(--kw)">${eliminated}</div></div>
       <div class="stat-card"><div class="stat-label">Errores</div><div class="stat-value" style="color:var(--text-muted)">0</div></div>
     </div>`;
   } else {
@@ -1042,6 +1373,103 @@ let currentFilename   = 'sin_titulo.scara';
 const FS_ACCESS       = ('showDirectoryPicker' in window && 'showSaveFilePicker' in window);
 let   currentFileHandle = null;   // FileSystemFileHandle del archivo abierto (para guardar directo)
 
+/* ══════════════════════════════════════════════════════════════
+   SISTEMA DE PESTAÑAS MÚLTIPLES
+   ══════════════════════════════════════════════════════════════ */
+let tabs         = [];    // [{ id, filename, content, fileHandle, modified, hasError }]
+let activeTabId  = null;
+let _nextTabId   = 1;
+let _switchingTab = false;  // evita marcar modified al hacer setValue durante switch
+
+function _tabStateClass(tab) {
+  if (tab.modified) return 'modified';
+  if (tab.hasError) return 'errored';
+  return 'clean';
+}
+
+function _renderTabs() {
+  const list = document.getElementById('editor-tabs-list');
+  if (!list) return;
+  list.innerHTML = tabs.map(tab => {
+    const state  = _tabStateClass(tab);
+    const active = tab.id === activeTabId ? ' active' : '';
+    return `<div class="editor-tab${active} ${state}" data-tab-id="${tab.id}">
+      <span class="tab-filename">${esc(tab.filename)}</span>
+      <span class="tab-dot"></span>
+      <span class="tab-close" data-close-id="${tab.id}" title="Cerrar">&#x2715;</span>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.editor-tab[data-tab-id]').forEach(el => {
+    const id = parseInt(el.dataset.tabId);
+    el.addEventListener('click', e => {
+      if (!e.target.classList.contains('tab-close')) _switchTab(id);
+    });
+  });
+  list.querySelectorAll('.tab-close[data-close-id]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      _closeTab(parseInt(el.dataset.closeId));
+    });
+  });
+}
+
+function _saveActiveContent() {
+  if (activeTabId === null) return;
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && cmEditor) tab.content = cmEditor.getValue();
+}
+
+function _switchTab(id) {
+  _saveActiveContent();
+  activeTabId = id;
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  _switchingTab = true;
+  if (cmEditor) {
+    cmEditor.setValue(tab.content);
+    cmEditor.clearHistory();
+  }
+  _switchingTab = false;
+  currentFilename   = tab.filename;
+  currentFileHandle = tab.fileHandle;
+  updateCursor();
+  _renderTabs();
+}
+
+function _closeTab(id) {
+  const idx = tabs.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  tabs.splice(idx, 1);
+  if (activeTabId === id) {
+    if (tabs.length === 0) { _newTab('sin_titulo.scara', ''); return; }
+    _switchTab(tabs[Math.min(idx, tabs.length - 1)].id);
+    return;
+  }
+  _renderTabs();
+}
+
+function _newTab(filename, content, fileHandle = null) {
+  const id = _nextTabId++;
+  tabs.push({ id, filename, content, fileHandle, modified: false, hasError: false });
+  _switchTab(id);
+  return id;
+}
+
+function _findTabByFilename(filename) {
+  return tabs.find(t => t.filename === filename) || null;
+}
+
+function _markActiveModified(modified) {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && tab.modified !== modified) { tab.modified = modified; _renderTabs(); }
+}
+
+function _markActiveError(hasError) {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && tab.hasError !== hasError) { tab.hasError = hasError; _renderTabs(); }
+}
+
 function _triggerDownload(filename, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
@@ -1063,6 +1491,7 @@ async function guardarRapido() {
       const writable = await currentFileHandle.createWritable();
       await writable.write(content);
       await writable.close();
+      _markActiveModified(false);
       showToast('💾 Guardado: ' + currentFilename, 'ok');
     } catch (e) {
       if (e.name !== 'AbortError') showToast('Error al guardar: ' + e.message, 'error');
@@ -1073,6 +1502,7 @@ async function guardarRapido() {
   /* Sin handle: si es "sin título" redirigir a Guardar como; si no, descargar */
   if (currentFilename === 'sin_titulo.scara') { guardarComo(); return; }
   _triggerDownload(currentFilename, content);
+  _markActiveModified(false);
   showToast('💾 Guardado: ' + currentFilename, 'ok');
 }
 
@@ -1095,7 +1525,9 @@ async function guardarComo() {
       await writable.close();
       currentFileHandle = handle;
       currentFilename   = handle.name;
-      document.getElementById('current-filename').textContent = handle.name;
+      const tab = tabs.find(t => t.id === activeTabId);
+      if (tab) { tab.filename = handle.name; tab.fileHandle = handle; }
+      _markActiveModified(false);
       showToast('💾 Guardado como: ' + handle.name, 'ok');
     } catch (e) {
       /* El usuario canceló el diálogo → AbortError, ignorar silenciosamente */
@@ -1110,8 +1542,10 @@ async function guardarComo() {
   const filename = input.trim() || currentFilename;
   const final    = filename.endsWith('.scara') ? filename : filename + '.scara';
   currentFilename = final;
-  document.getElementById('current-filename').textContent = final;
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab) tab.filename = final;
   _triggerDownload(final, content);
+  _markActiveModified(false);
   showToast('💾 Guardado como: ' + final, 'ok');
 }
 
@@ -1147,16 +1581,16 @@ document.addEventListener('click', closeSaveDropdown);
 async function cargarEjemplo(path, item) {
   item.classList.add('loading');
   try {
-    const res = await fetch('/examples/' + path);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const code = await res.text();
-    cmEditor.setValue(code);
-    cmEditor.clearHistory();
-    updateCursor();
     const filename = path.split('/').pop();
-    currentFilename   = filename;
-    currentFileHandle = null;   // archivo de galería → no tiene handle de escritura
-    document.getElementById('current-filename').textContent = filename;
+    const existing = _findTabByFilename(filename);
+    if (existing) {
+      _switchTab(existing.id);
+    } else {
+      const res = await fetch('/examples/' + path);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const code = await res.text();
+      _newTab(filename, code, null);
+    }
     showToast('Cargado: ' + filename, 'ok');
     document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
@@ -1171,13 +1605,8 @@ async function cargarEjemplo(path, item) {
    NUEVO ARCHIVO
    ══════════════════════════════════════════════════════════════ */
 document.getElementById('btn-new').addEventListener('click', () => {
-  cmEditor.setValue('');
-  cmEditor.clearHistory();
-  currentFilename   = 'sin_titulo.scara';
-  currentFileHandle = null;
-  document.getElementById('current-filename').textContent = 'sin_titulo.scara';
+  _newTab('sin_titulo.scara', '');
   document.querySelectorAll('.gallery-item, .folder-file-item').forEach(i => i.classList.remove('active'));
-  updateCursor();
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -1225,6 +1654,15 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     document.querySelectorAll('.sidebar-view').forEach(v => v.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-' + mode).classList.add('active');
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   DOCUMENTACIÓN — acordeón
+   ══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.docs-hdr').forEach(hdr => {
+  hdr.addEventListener('click', () => {
+    hdr.closest('.docs-section').classList.toggle('ds-open');
   });
 });
 
@@ -1287,11 +1725,13 @@ function _populateFolderList(dirName, entries) {
         currentFileHandle = null;           // fallback: sin handle
       }
 
-      currentFilename = entry.name;
-      document.getElementById('current-filename').textContent = entry.name;
-      cmEditor.setValue(text);
-      cmEditor.clearHistory();
-      updateCursor();
+      const existing = _findTabByFilename(entry.name);
+      if (existing) {
+        existing.fileHandle = entry.handle || null;
+        _switchTab(existing.id);
+      } else {
+        _newTab(entry.name, text, entry.handle || null);
+      }
       showToast('Cargado: ' + entry.name, 'ok');
     });
   });
@@ -1365,6 +1805,7 @@ document.head.appendChild(jumpStyle);
 cmEditor.on('change', () => {
   _updateScaraSymbols(cmEditor.getValue());
   cmEditor.setOption('mode', 'scara');
+  if (!_switchingTab) _markActiveModified(true);
 });
 cmEditor.on('cursorActivity', updateCursor);
 
@@ -1384,8 +1825,12 @@ cmEditor.on('cursorActivity', updateCursor);
       document.getElementById('server-label').textContent = 'Servidor activo';
       const firstItem = document.querySelector('.gallery-item[data-path]');
       if (firstItem) cargarEjemplo(firstItem.dataset.path, firstItem);
+      else _newTab('sin_titulo.scara', '');
+    } else {
+      _newTab('sin_titulo.scara', '');
     }
   } catch {
+    _newTab('sin_titulo.scara', '');
     document.getElementById('server-dot').style.background   = 'var(--err)';
     document.getElementById('server-dot').style.boxShadow    = '0 0 5px var(--err)';
     document.getElementById('server-label').textContent      = 'Servidor inactivo';

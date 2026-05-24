@@ -6,9 +6,15 @@
 // --- Estado interno ---------------------------------------
 
 static const char* fuente_global = NULL;
+static int         num_errores   = 0;
 
 void error_init(const char* fuente) {
     fuente_global = fuente;
+    num_errores   = 0;
+}
+
+int error_hubo(void) {
+    return num_errores > 0;
 }
 
 // --- Obtener una linea especifica del codigo fuente -------
@@ -89,5 +95,6 @@ void error_reportar(TipoError tipo, int linea,
     }
 
     fprintf(stderr, "\n");
-    exit(1);
+    num_errores++;
+    /* No llamamos exit() — el parser continúa en modo pánico */
 }

@@ -248,11 +248,11 @@ void parsear_movimiento(Parser* p) {
                 error_reportar(ERR_SEMANTICO, linea_mov,
                                nombre_op, mensaje);
             }
-            if (z < 0) {
+            if (z < CIN_Z_MIN || z > CIN_Z_MAX) {
                 char mensaje[128];
                 sprintf(mensaje,
-                    "%s con Z literal invalida (%d), debe ser >= 0",
-                    nombre_op, z);
+                    "%s con Z=%d mm fuera de rango [%d, %d] mm",
+                    nombre_op, z, CIN_Z_MIN, CIN_Z_MAX);
                 error_reportar(ERR_SEMANTICO, linea_mov,
                                nombre_op, mensaje);
             }
@@ -298,7 +298,7 @@ void parsear_declaracion(Parser* p) {
             error_reportar(ERR_SEMANTICO, linea_nombre, nombre, mensaje);
         }
 
-        // verificar alcanzabilidad
+        // verificar alcanzabilidad XY
         int L1 = 200, L2 = 150;
         int d2   = x*x + y*y;
         int dmax = (L1+L2)*(L1+L2);
@@ -306,8 +306,16 @@ void parsear_declaracion(Parser* p) {
         if (d2 > dmax || d2 < dmin) {
             char mensaje[128];
             sprintf(mensaje,
-                "POINT '%s' fuera de alcance (distancia debe ser %d-%d mm)",
+                "POINT '%s' fuera de alcance XY (distancia debe ser %d-%d mm)",
                 nombre, L1-L2, L1+L2);
+            error_reportar(ERR_SEMANTICO, linea_nombre, nombre, mensaje);
+        }
+        // verificar altura Z
+        if (z < CIN_Z_MIN || z > CIN_Z_MAX) {
+            char mensaje[128];
+            sprintf(mensaje,
+                "POINT '%s' tiene Z=%d mm fuera de rango [%d, %d] mm",
+                nombre, z, CIN_Z_MIN, CIN_Z_MAX);
             error_reportar(ERR_SEMANTICO, linea_nombre, nombre, mensaje);
         }
 
@@ -429,6 +437,34 @@ void parsear_flujo(Parser* p) {
     }
 }
 
+/* ── Modo pánico ───────────────────────────────────────────────────────────
+ * Cuando se detecta un error, el parser descarta tokens hasta encontrar un
+ * "punto de sincronización" — el inicio de una instrucción válida o el fin
+ * de bloque/archivo. Así puede continuar evaluando el resto del programa y
+ * reportar errores adicionales reales en lugar de cascadas falsas.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+static int es_punto_sync(TipoToken tipo) {
+    switch (tipo) {
+        case TOK_MOVE:    case TOK_MOVEJ:  case TOK_APPROACH:
+        case TOK_DEPART:  case TOK_HOME:
+        case TOK_OPEN:    case TOK_CLOSE:
+        case TOK_SPEED:   case TOK_WAIT:   case TOK_PRINT:
+        case TOK_IF:      case TOK_WHILE:  case TOK_REPEAT:
+        case TOK_ELSE:    case TOK_END:
+        case TOK_VAR:     case TOK_POINT:
+        case TOK_EOF:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+static void parser_sincronizar(Parser* p) {
+    if (es_punto_sync(p->actual.tipo)) return;  /* ya estamos en punto seguro */
+    do { parser_avanzar(p); } while (!es_punto_sync(p->actual.tipo));
+}
+
 void parsear_instruccion(Parser* p) {
     switch (p->actual.tipo) {
         case TOK_MOVE:
@@ -531,9 +567,13 @@ void parsear_instruccion(Parser* p) {
         case TOK_IDENT:
             if (p->siguiente.tipo == TOK_ASSIGN)
                 parsear_asignacion(p);
+            else
+                parser_sincronizar(p);  /* identificador suelto → buscar sync */
             break;
 
-        default: break;
+        default:
+            parser_sincronizar(p);  /* token desconocido → buscar sync */
+            break;
     }
 }
 

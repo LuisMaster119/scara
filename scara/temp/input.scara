@@ -1,6 +1,6 @@
 PROGRAM pickandplace
 VAR i = 0
-POINT encima_caja = 150 200 150
+POINT encima_caja = 150 200 50
 POINT caja = 150 200 0
 POINT encima_mesa = 300 150 50
 POINT mesa = 300 150 0
